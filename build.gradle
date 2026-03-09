@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.3'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'org.example'
+version = '0.0.1-SNAPSHOT'
+description = 'Backend9'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // --- CÁC THƯ VIỆN CỐT LÕI (CÓ SẴN) ---
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    compileOnly 'org.projectlombok:lombok'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // --- THƯ VIỆN BỔ SUNG CHO TÍNH NĂNG MỚI ---
+
+    // 1. APACHE POI (Xuất file Excel)
+    implementation 'org.apache.poi:poi-ooxml:5.2.3'
+
+    // 2. THYMELEAF & FLYING SAUCER (Tạo Template In Hóa Đơn và xuất PDF)
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.xhtmlrenderer:flying-saucer-pdf-openpdf:9.1.22'
+
+    // 3. CLOUDINARY (Upload hình ảnh Sản phẩm)
+    implementation 'com.cloudinary:cloudinary-http44:1.36.0'
+
+    // 4. GOOGLE APIS (Tương tác với Google Sheets & Google Drive)
+    implementation 'com.google.api-client:google-api-client-gson:2.2.0'
+    implementation 'com.google.apis:google-api-services-sheets:v4-rev20230815-2.0.0'
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20230822-2.0.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.19.0'
+
+    // --- TEST ---
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
