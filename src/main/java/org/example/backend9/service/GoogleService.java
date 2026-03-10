@@ -56,7 +56,7 @@ public class GoogleService {
                     .setApplicationName("SmartRetail-WMS")
                     .build();
         } catch (Exception e) {
-            System.err.println("Không thể khởi tạo Google API: " + e.getMessage());
+            throw new RuntimeException("Không thể khởi tạo Google API. Vui lòng kiểm tra lại file credentials: " + e.getMessage(), e);
         }
     }
 

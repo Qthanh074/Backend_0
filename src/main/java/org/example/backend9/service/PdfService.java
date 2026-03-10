@@ -17,14 +17,12 @@ public class PdfService {
     private TemplateEngine templateEngine;
 
     public byte[] generatePdfFromHtml(String templateName, Map<String, Object> data) {
-        try {
-            // 1. Nhồi dữ liệu vào template HTML (Ví dụ: file invoice-template.html)
+        // Dùng try-with-resources để tự động close stream
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             Context context = new Context();
             context.setVariables(data);
             String htmlContent = templateEngine.process(templateName, context);
 
-            // 2. Convert HTML sang PDF
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ITextRenderer renderer = new ITextRenderer();
             renderer.setDocumentFromString(htmlContent);
             renderer.layout();
@@ -32,7 +30,7 @@ public class PdfService {
 
             return outputStream.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Lỗi khi tạo PDF: " + e.getMessage());
+            throw new RuntimeException("Lỗi khi tạo PDF: " + e.getMessage(), e);
         }
     }
 }
