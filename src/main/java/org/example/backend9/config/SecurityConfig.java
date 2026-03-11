@@ -54,26 +54,18 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/auth/**").permitAll()
+                        .requestMatchers("/", "/api/auth/**", "/error").permitAll()
 
-                        // Core module
-                        .requestMatchers("/api/core/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/core/**", "/api/logs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
-                        // Inventory + Product
-                        .requestMatchers("/api/inventory/**", "/api/products/**")
-                        .hasAnyRole("ADMIN", "MANAGER")
+                        // Kho và Sản phẩm: Admin, Super Admin, Manager
+                        .requestMatchers("/api/inventory/**", "/api/products/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
 
-                        // Sales
-                        .requestMatchers("/api/sales/**")
-                        .hasAnyRole("ADMIN", "MANAGER", "CASHIER")
+                        // Sổ quỹ & Tài chính: Admin, Super Admin, Manager
+                        .requestMatchers("/api/finance/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
 
-                        // Finance
-                        .requestMatchers("/api/finance/**")
-                        .hasAnyRole("ADMIN", "ACCOUNTANT")
-
-                        // Logs
-                        .requestMatchers("/api/logs/**")
-                        .hasRole("ADMIN")
+                        // Bán hàng (Hóa đơn, Khách hàng): Tất cả nhân viên đều được phép
+                        .requestMatchers("/api/sales/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER", "STAFF")
 
                         .anyRequest().authenticated()
                 );

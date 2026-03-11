@@ -3,7 +3,8 @@ package org.example.backend9.enums;
 public enum PaymentMethod {
     CASH("Tiền mặt"),
     QR_CODE("Chuyển khoản QR"),
-    CARD("Thẻ/POS");
+    CARD("Thẻ/POS"),
+    BANK_TRANSFER("Chuyển khoản ngân hàng");
 
     private final String description;
 
