@@ -55,12 +55,20 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/api/auth/**").permitAll()
-                        // Gán quyền truy cập theo 5 module (Bạn có thể tinh chỉnh ROLE sau)
-                        .requestMatchers("/api/core/**").hasRole("ADMIN")
-                        .requestMatchers("/api/inventory/**", "/api/products/**").hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers("/api/sales/**").hasAnyRole("ADMIN", "MANAGER", "CASHIER")
-                        .requestMatchers("/api/finance/**").hasAnyRole("ADMIN", "ACCOUNTANT")
-                        .requestMatchers("/api/logs/**").hasRole("ADMIN")
+
+                        // --- PHÂN QUYỀN THEO USER ROLE MỚI ---
+                        // Hệ thống Core & Logs: Chỉ Admin và Super Admin
+                        .requestMatchers("/api/core/**", "/api/logs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+
+                        // Kho và Sản phẩm: Admin, Super Admin, Manager
+                        .requestMatchers("/api/inventory/**", "/api/products/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
+
+                        // Sổ quỹ & Tài chính: Admin, Super Admin, Manager
+                        .requestMatchers("/api/finance/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
+
+                        // Bán hàng (Hóa đơn, Khách hàng): Tất cả nhân viên đều được phép
+                        .requestMatchers("/api/sales/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER", "STAFF")
+
                         .anyRequest().authenticated()
                 );
 
