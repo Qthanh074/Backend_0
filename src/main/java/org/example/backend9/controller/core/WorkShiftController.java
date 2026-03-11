@@ -35,7 +35,7 @@ public class WorkShiftController {
 
     // Nhân viên check-in
     @PostMapping("/check-in")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CASHIER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<WorkShiftResponse>> checkIn(
             @Valid @RequestBody WorkShiftRequest request) {
 
@@ -48,7 +48,7 @@ public class WorkShiftController {
 
     // Nhân viên check-out
     @PatchMapping("/{id}/check-out")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','CASHIER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<WorkShiftResponse>> checkOut(
             @PathVariable Integer id) {
 
