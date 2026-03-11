@@ -24,4 +24,6 @@ public class Color {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private EntityStatus status = EntityStatus.ACTIVE;
+
+
 }

@@ -27,7 +27,10 @@ public class Product {
     private String name; // Tên sản phẩm (VD: Áo thun nam Polo)
 
     private String description;
-    private String imageUrl;
+    @ElementCollection
+    @CollectionTable(name = "product_images", joinColumns = @JoinColumn(name = "product_id"))
+    @Column(name = "image_url")
+    private List<String> imageUrls;
 
     // Liên kết với Nhà Cung Cấp
     @ManyToOne(fetch = FetchType.LAZY)

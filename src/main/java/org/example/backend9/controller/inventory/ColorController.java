@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/colors")
+@RequestMapping("/api/inventory/colors")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class ColorController {
@@ -33,8 +33,8 @@ public class ColorController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        colorService.delete(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> delete(@PathVariable Long id) {
+        String message = colorService.delete(id);
+        return ResponseEntity.ok(message);
     }
 }

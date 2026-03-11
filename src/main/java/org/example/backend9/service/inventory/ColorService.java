@@ -68,16 +68,17 @@ public class ColorService {
         return mapToResponse(colorRepository.save(color));
     }
 
-    public void delete(Long id) {
-        colorRepository.deleteById(id);
+    @Transactional
+    public String delete(Long id) {
+        Color color = colorRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy màu sắc id: " + id));
+        String name = color.getName();
+        colorRepository.delete(color);
+        return "Đã xóa thành công màu: " + name;
     }
 
     private ColorResponse mapToResponse(Color color) {
         return ColorResponse.builder()
                 .id(color.getId() != null ? Long.valueOf(color.getId().toString()) : null)
-                .name(color.getName())
-                .hexCode(color.getHexCode())
-                .status(color.getStatus())
-                .build();
+                .name(color.getName()).hexCode(color.getHexCode()).status(color.getStatus()).build();
     }
 }
