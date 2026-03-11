@@ -1,8 +1,8 @@
 package org.example.backend9.entity.inventory;
 
+import org.example.backend9.enums.EntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.backend9.enums.EntityStatus; // Enum đã tạo trước đó
 
 @Entity
 @Table(name = "categories")

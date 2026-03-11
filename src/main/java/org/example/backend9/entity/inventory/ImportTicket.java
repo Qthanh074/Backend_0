@@ -1,13 +1,14 @@
 package org.example.backend9.entity.inventory;
 
 
-import jakarta.persistence.*;
-import lombok.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import org.example.backend9.entity.core.Employee;
 import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.enums.TicketStatus;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "import_tickets")

@@ -2,7 +2,7 @@ package org.example.backend9.entity.inventory;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.backend9.entity.inventory.ProductVariant;
+
 @Entity
 @Table(name = "transfer_ticket_details")
 @Data @NoArgsConstructor @AllArgsConstructor

@@ -3,7 +3,6 @@ package org.example.backend9.entity.inventory;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import org.example.backend9.entity.inventory.ProductVariant;
 
 @Entity
 @Table(name = "inventory_check_details")

@@ -1,11 +1,12 @@
 package org.example.backend9.entity.inventory;
 
+import org.example.backend9.entity.core.Employee;
+import org.example.backend9.entity.core.Store;
+import org.example.backend9.enums.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
-import org.example.backend9.entity.core.Store;
-import org.example.backend9.entity.core.Employee;
-import org.example.backend9.enums.TicketStatus;
 
 @Entity
 @Table(name = "transfer_tickets")

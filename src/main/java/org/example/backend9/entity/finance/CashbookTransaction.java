@@ -1,15 +1,15 @@
 package org.example.backend9.entity.finance;
 
-import jakarta.persistence.*;
-import lombok.*;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-import org.example.backend9.entity.core.Store;
 import org.example.backend9.entity.core.Employee;
-import org.example.backend9.enums.TransactionType;
+import org.example.backend9.entity.core.Store;
 import org.example.backend9.enums.PaymentMethod;
 import org.example.backend9.enums.TicketStatus;
+import org.example.backend9.enums.TransactionType;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cashbook_transactions")

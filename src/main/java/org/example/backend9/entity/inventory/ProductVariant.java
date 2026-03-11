@@ -1,9 +1,10 @@
 package org.example.backend9.entity.inventory;
 
+import org.example.backend9.enums.EntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
-import org.example.backend9.enums.EntityStatus;
 
 @Entity
 @Table(name = "product_variants")

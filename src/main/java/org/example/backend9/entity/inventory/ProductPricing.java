@@ -1,10 +1,11 @@
 package org.example.backend9.entity.inventory;
 
+import org.example.backend9.entity.core.Store;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
-import org.example.backend9.entity.core.Store;
-import org.example.backend9.entity.inventory.ProductVariant;
+
 @Entity
 @Table(name = "product_pricings")
 @Data @NoArgsConstructor @AllArgsConstructor

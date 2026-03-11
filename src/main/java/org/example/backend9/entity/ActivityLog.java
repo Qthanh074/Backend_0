@@ -4,7 +4,7 @@ package org.example.backend9.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import org.hibernate.annotations.CreationTimestamp;
+
 import org.example.backend9.entity.core.Employee;
 @Entity
 @Table(name = "activity_logs")
