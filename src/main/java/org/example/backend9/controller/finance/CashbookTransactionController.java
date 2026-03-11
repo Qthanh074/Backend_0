@@ -16,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/finance/cashbooks")
-@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT')")
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN' )")
 public class CashbookTransactionController {
 
     private final CashbookTransactionService cashbookService;
