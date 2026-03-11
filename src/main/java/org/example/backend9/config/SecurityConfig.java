@@ -56,33 +56,48 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/api/auth/**").permitAll()
 
-                        // --- PHÂN QUYỀN THEO USER ROLE MỚI ---
-                        // Hệ thống Core & Logs: Chỉ Admin và Super Admin
-                        .requestMatchers("/api/core/**", "/api/logs/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                        // Core module
+                        .requestMatchers("/api/core/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
-                        // Kho và Sản phẩm: Admin, Super Admin, Manager
-                        .requestMatchers("/api/inventory/**", "/api/products/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
+                        // Inventory + Product
+                        .requestMatchers("/api/inventory/**", "/api/products/**")
+                        .hasAnyRole("ADMIN", "MANAGER")
 
-                        // Sổ quỹ & Tài chính: Admin, Super Admin, Manager
-                        .requestMatchers("/api/finance/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER")
+                        // Sales
+                        .requestMatchers("/api/sales/**")
+                        .hasAnyRole("ADMIN", "MANAGER", "CASHIER")
 
-                        // Bán hàng (Hóa đơn, Khách hàng): Tất cả nhân viên đều được phép
-                        .requestMatchers("/api/sales/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "MANAGER", "STAFF")
+                        // Finance
+                        .requestMatchers("/api/finance/**")
+                        .hasAnyRole("ADMIN", "ACCOUNTANT")
+
+                        // Logs
+                        .requestMatchers("/api/logs/**")
+                        .hasRole("ADMIN")
 
                         .anyRequest().authenticated()
                 );
 
         http.addFilterBefore(jwtAuthenticationFilter(blacklistService), UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173", "http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:5173",
+                "http://localhost:3000"
+        ));
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"
+        ));
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization", "Content-Type"
+        ));
         configuration.setAllowCredentials(true);
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
