@@ -3,6 +3,7 @@ package org.example.backend9.service.auth;
 import org.example.backend9.dto.request.RegisterRequest;
 import org.example.backend9.entity.core.Employee;
 import org.example.backend9.enums.EntityStatus;
+import org.example.backend9.enums.UserRole;
 import org.example.backend9.repository.core.EmployeeRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,17 +37,17 @@ public class AuthService {
         emp.setPhone(request.getPhone());
         emp.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
-        // Mặc định tài khoản chưa kích hoạt
         emp.setStatus(EntityStatus.INACTIVE);
         emp.setVerificationToken(UUID.randomUUID().toString());
-        emp.setRole("CASHIER"); // Role mặc định (Bạn có thể đổi thành STAFF)
 
-        // Sinh mã NV ngẫu nhiên hoặc logic của bạn
+        // --- SỬA TẠI ĐÂY: Gán role mặc định theo Enum ---
+        emp.setRole(UserRole.STAFF.name());
+
         emp.setCode("EMP" + System.currentTimeMillis() % 10000);
 
         Employee saved = employeeRepository.save(emp);
 
-        // TODO: Gọi EmailService gửi mail (giống repo cũ)
+        // TODO: Gọi EmailService gửi mail
         System.out.println("Gửi mail xác thực đến: " + emp.getEmail() + " với token: " + emp.getVerificationToken());
 
         return saved;
