@@ -1,15 +1,14 @@
 package org.example.backend9.entity.inventory;
 
 
+import org.example.backend9.entity.core.Supplier;
+import org.example.backend9.enums.EntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-
-
-import org.example.backend9.entity.core.Supplier;
-import org.example.backend9.enums.EntityStatus;
 
 @Entity
 @Table(name = "products")

@@ -22,12 +22,19 @@ public class Employee {
     private String email; // Used as login username
 
     private String phone;
-    private String passwordHash;
 
-    private String role;
+    @Column(nullable = false)
+    private String passwordHash; // Dùng để lưu mật khẩu đã mã hóa
+
+    @Column(name = "verification_token")
+    private String verificationToken; // Mã xác thực email
+
+    private String role; // Vd: ADMIN, MANAGER, CASHIER
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private EntityStatus status = EntityStatus.ACTIVE;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id")
     private Store store;

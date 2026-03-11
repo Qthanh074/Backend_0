@@ -1,8 +1,8 @@
 package org.example.backend9.entity.core;
 
+import org.example.backend9.enums.EntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.example.backend9.enums.EntityStatus;
 
 @Entity
 @Table(name = "suppliers")

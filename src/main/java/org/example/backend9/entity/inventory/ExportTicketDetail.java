@@ -5,9 +5,8 @@ package org.example.backend9.entity.inventory;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import org.example.backend9.entity.inventory.ProductVariant;
 
-    @Entity
+@Entity
     @Table(name = "export_ticket_details")
     @Data @NoArgsConstructor @AllArgsConstructor
     public class ExportTicketDetail {

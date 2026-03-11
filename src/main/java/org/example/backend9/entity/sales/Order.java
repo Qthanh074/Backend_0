@@ -1,16 +1,16 @@
 package org.example.backend9.entity.sales;
 
+import org.example.backend9.entity.core.Employee;
+import org.example.backend9.entity.core.Store;
+import org.example.backend9.enums.OrderStatus;
+import org.example.backend9.enums.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.example.backend9.entity.core.Store;
-import org.example.backend9.entity.core.Employee;
-import org.example.backend9.enums.OrderStatus;
-import org.example.backend9.enums.PaymentMethod;
 
 @Entity
 @Table(name = "orders")

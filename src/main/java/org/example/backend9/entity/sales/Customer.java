@@ -1,13 +1,14 @@
 package org.example.backend9.entity.sales;
 
 
-import jakarta.persistence.*;
-import lombok.*;
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import org.example.backend9.entity.core.Area;
 import org.example.backend9.entity.core.Employee;
 import org.example.backend9.enums.CustomerTier;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "customers")

@@ -1,11 +1,12 @@
 package org.example.backend9.entity.sales;
 
 
+import org.example.backend9.enums.DiscountType;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import org.example.backend9.enums.DiscountType;
 
 @Entity
 @Table(name = "promotions")
