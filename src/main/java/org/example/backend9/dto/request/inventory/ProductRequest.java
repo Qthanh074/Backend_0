@@ -1,4 +1,3 @@
-// src/main/java/org/example/backend9/dto/request/inventory/ProductRequest.java
 package org.example.backend9.dto.request.inventory;
 
 import lombok.Data;
@@ -9,8 +8,10 @@ import java.util.List;
 public class ProductRequest {
     private String name;
     private String code;
+    private String barcode;
     private Long categoryId;
     private Long supplierId;
+    private Long unitId;
     private List<String> imageUrls;
     private String description;
     private EntityStatus status;
@@ -22,8 +23,10 @@ public class ProductRequest {
         private Long colorId;
         private Long sizeId;
         private Long unitId;
+        private String barcode;
         private Double costPrice;
         private Double sellPrice;
+        private Double wholesalePrice; 
         private Integer quantity;
     }
 }

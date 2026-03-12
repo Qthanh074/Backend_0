@@ -39,10 +39,16 @@ public class ProductService {
         product.setImageUrls(request.getImageUrls());
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
-        product.setCategory(categoryRepository.findById(request.getCategoryId()).orElseThrow());
 
-        // Sửa lỗi kiểu dữ liệu SupplierId nếu cần
+        product.setCategory(categoryRepository.findById(request.getCategoryId()).orElseThrow());
         product.setSupplier(supplierRepository.findById(Math.toIntExact(request.getSupplierId())).orElseThrow());
+
+        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
+            Long firstUnitId = request.getVariants().get(0).getUnitId();
+            if (firstUnitId != null) {
+                product.setUnit(unitRepository.findById(firstUnitId).orElse(null));
+            }
+        }
 
         Product savedProduct = productRepository.save(product);
 
@@ -62,11 +68,15 @@ public class ProductService {
         product.setImageUrls(request.getImageUrls());
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
+
+        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
+            Long firstUnitId = request.getVariants().get(0).getUnitId();
+            product.setUnit(unitRepository.findById(firstUnitId).orElse(null));
+        }
+
         productRepository.save(product);
 
-        // Xóa cũ - Tạo mới để đồng bộ biến thể
         List<ProductVariant> oldVariants = variantRepository.findByProductId(id);
-        // Lưu ý: Nếu b có bảng Pricing liên kết Variant, cần xóa Pricing trước hoặc đặt Cascade
         variantRepository.deleteAll(oldVariants);
 
         if (request.getVariants() != null) {
@@ -75,7 +85,6 @@ public class ProductService {
 
         return mapToResponse(product);
     }
-
     // Hàm Helper để xử lý lưu biến thể
     private void createVariants(Product product, List<ProductRequest.VariantRequest> variantRequests) {
         for (ProductRequest.VariantRequest vReq : variantRequests) {

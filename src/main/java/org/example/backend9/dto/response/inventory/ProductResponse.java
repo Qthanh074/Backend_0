@@ -12,8 +12,12 @@ public class ProductResponse {
     private Long id;
     private String name;
     private String code;
+    private String barcode;
+    private Long categoryId;
     private String categoryName;
+    private Long supplierId;
     private String supplierName;
+    private String unitName;
     private List<String> imageUrls;
     private String description;
     private EntityStatus status;
@@ -21,13 +25,17 @@ public class ProductResponse {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class VariantResponse {
         private Long id;
+        private String barcode;
         private String colorName;
         private String sizeName;
         private String unitName;
         private Double costPrice;
         private Double sellPrice;
+        private Double wholesalePrice;
         private Integer quantity;
     }
 }
