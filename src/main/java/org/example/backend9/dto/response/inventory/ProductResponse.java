@@ -29,6 +29,8 @@ public class ProductResponse {
     @AllArgsConstructor
     public static class VariantResponse {
         private Long id;
+        private String sku;
+        private String variantName;
         private String barcode;
         private String colorName;
         private String sizeName;

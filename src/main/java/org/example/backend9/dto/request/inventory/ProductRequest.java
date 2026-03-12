@@ -20,13 +20,15 @@ public class ProductRequest {
 
     @Data
     public static class VariantRequest {
+        private String sku;
+        private String variantName;
         private Long colorId;
         private Long sizeId;
         private Long unitId;
         private String barcode;
         private Double costPrice;
         private Double sellPrice;
-        private Double wholesalePrice; 
+        private Double wholesalePrice;
         private Integer quantity;
     }
 }

@@ -32,6 +32,8 @@ public class Product {
     @Column(name = "image_url")
     private List<String> imageUrls;
 
+    private String barcode;
+
     // Liên kết với Nhà Cung Cấp
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id")

@@ -36,6 +36,7 @@ public class ProductService {
         Product product = new Product();
         product.setName(request.getName());
         product.setCode(request.getCode() != null ? request.getCode() : "SP" + System.currentTimeMillis());
+        product.setBarcode(request.getBarcode());
         product.setImageUrls(request.getImageUrls());
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
@@ -43,11 +44,12 @@ public class ProductService {
         product.setCategory(categoryRepository.findById(request.getCategoryId()).orElseThrow());
         product.setSupplier(supplierRepository.findById(Math.toIntExact(request.getSupplierId())).orElseThrow());
 
-        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
-            Long firstUnitId = request.getVariants().get(0).getUnitId();
-            if (firstUnitId != null) {
-                product.setUnit(unitRepository.findById(firstUnitId).orElse(null));
-            }
+
+        Long unitId = (request.getUnitId() != null) ? request.getUnitId() :
+                (request.getVariants() != null && !request.getVariants().isEmpty() ? request.getVariants().get(0).getUnitId() : null);
+
+        if (unitId != null) {
+            product.setUnit(unitRepository.findById(unitId).orElse(null));
         }
 
         Product savedProduct = productRepository.save(product);
@@ -65,16 +67,20 @@ public class ProductService {
         Product product = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Không thấy SP"));
 
         product.setName(request.getName());
+        product.setBarcode(request.getBarcode());
         product.setImageUrls(request.getImageUrls());
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
 
-        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
-            Long firstUnitId = request.getVariants().get(0).getUnitId();
-            product.setUnit(unitRepository.findById(firstUnitId).orElse(null));
+
+        Long unitId = (request.getUnitId() != null) ? request.getUnitId() :
+                (request.getVariants() != null && !request.getVariants().isEmpty() ? request.getVariants().get(0).getUnitId() : null);
+        if (unitId != null) {
+            product.setUnit(unitRepository.findById(unitId).orElse(null));
         }
 
         productRepository.save(product);
+
 
         List<ProductVariant> oldVariants = variantRepository.findByProductId(id);
         variantRepository.deleteAll(oldVariants);
@@ -85,22 +91,32 @@ public class ProductService {
 
         return mapToResponse(product);
     }
-    // Hàm Helper để xử lý lưu biến thể
+
     private void createVariants(Product product, List<ProductRequest.VariantRequest> variantRequests) {
         for (ProductRequest.VariantRequest vReq : variantRequests) {
             ProductVariant variant = new ProductVariant();
             variant.setProduct(product);
+            variant.setSku(vReq.getSku());
+            variant.setBarcode(vReq.getBarcode());
             variant.setQuantity(vReq.getQuantity());
             variant.setColor(vReq.getColorId() != null ? colorRepository.findById(vReq.getColorId()).orElse(null) : null);
             variant.setSize(vReq.getSizeId() != null ? sizeRepository.findById(vReq.getSizeId()).orElse(null) : null);
             variant.setUnit(vReq.getUnitId() != null ? unitRepository.findById(vReq.getUnitId()).orElse(null) : null);
+
+
+            String colorName = variant.getColor() != null ? variant.getColor().getName() : "";
+            String sizeName = variant.getSize() != null ? variant.getSize().getName() : "";
+            variant.setVariantName(colorName + (sizeName.isEmpty() ? "" : " - " + sizeName));
+
             ProductVariant savedVariant = variantRepository.save(variant);
+
 
             ProductPricing pricing = new ProductPricing();
             pricing.setProduct(product);
             pricing.setVariant(savedVariant);
             pricing.setBaseCostPrice(vReq.getCostPrice());
             pricing.setBaseRetailPrice(vReq.getSellPrice());
+            pricing.setWholesalePrice(vReq.getWholesalePrice());
             pricingRepository.save(pricing);
         }
     }
@@ -129,13 +145,18 @@ public class ProductService {
 
         List<ProductResponse.VariantResponse> variantDtos = variants.stream().map(v -> {
             ProductPricing p = pricingRepository.findByVariantId(Long.valueOf(v.getId())).stream().findFirst().orElse(new ProductPricing());
+
             return ProductResponse.VariantResponse.builder()
                     .id(Long.valueOf(v.getId()))
+                    .sku(v.getSku())
+                    .variantName(v.getVariantName())
+                    .barcode(v.getBarcode())
                     .colorName(v.getColor() != null ? v.getColor().getName() : "")
                     .sizeName(v.getSize() != null ? v.getSize().getName() : "")
                     .unitName(v.getUnit() != null ? v.getUnit().getName() : "")
                     .costPrice(p.getBaseCostPrice())
                     .sellPrice(p.getBaseRetailPrice())
+                    .wholesalePrice(p.getWholesalePrice())
                     .quantity(v.getQuantity())
                     .build();
         }).collect(Collectors.toList());
@@ -144,8 +165,12 @@ public class ProductService {
                 .id(Long.valueOf(product.getId()))
                 .name(product.getName())
                 .code(product.getCode())
+                .barcode(product.getBarcode())
+                .categoryId(Long.valueOf(product.getCategory() != null ? product.getCategory().getId() : null))
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : "")
+                .supplierId(Long.valueOf(product.getSupplier() != null ? product.getSupplier().getId() : null))
                 .supplierName(product.getSupplier() != null ? product.getSupplier().getName() : "")
+                .unitName(product.getUnit() != null ? product.getUnit().getName() : "")
                 .imageUrls(product.getImageUrls())
                 .description(product.getDescription())
                 .status(product.getStatus())
