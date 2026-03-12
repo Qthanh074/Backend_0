@@ -7,10 +7,11 @@ import org.example.backend9.entity.inventory.*;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.core.StoreRepository;
-import org.example.backend9.service.ExcelService;
+import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,7 +22,7 @@ public class ProductPricingService {
     private final ProductPricingRepository pricingRepository;
     private final ProductVariantRepository variantRepository;
     private final StoreRepository storeRepository;
-    private final ExcelService excelService;
+    private final GoogleSheetService googleSheetService;
 
     public List<PriceResponse> getAll() {
         return pricingRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
@@ -29,7 +30,6 @@ public class ProductPricingService {
 
     @Transactional
     public PriceResponse setupPrice(PriceSetupRequest request) {
-        // Kiểm tra xem đã có bản ghi giá cho Variant này tại Store này chưa (nếu có thì update, chưa thì create)
         ProductPricing pricing = pricingRepository
                 .findByVariantIdAndStoreId(request.getVariantId(), request.getStoreId())
                 .orElse(new ProductPricing());
@@ -52,8 +52,7 @@ public class ProductPricingService {
 
         ProductPricing saved = pricingRepository.save(pricing);
 
-        // Xuất Excel sau khi thiết lập giá
-        exportExcel(saved);
+        syncToGoogleSheets(saved, "Thiết lập giá");
 
         return mapToResponse(saved);
     }
@@ -64,33 +63,38 @@ public class ProductPricingService {
         return "Đã xóa bảng giá thành công";
     }
 
-    // Chức năng "Duyệt Giá Mới" trên giao diện của b
     @Transactional
     public void approvePrice(Integer id) {
         ProductPricing pricing = pricingRepository.findById(Long.valueOf(id)).orElseThrow();
         pricing.setStatus("Đang áp dụng");
-        pricingRepository.save(pricing);
+        ProductPricing saved = pricingRepository.save(pricing);
+        syncToGoogleSheets(saved, "Duyệt giá");
     }
-
-    private void exportExcel(ProductPricing p) {
+    private void syncToGoogleSheets(ProductPricing p, String actionType) {
         try {
-            List<String> headers = Arrays.asList("Mã Hàng", "Tên Hàng", "Chi Nhánh", "Giá Bán", "Trạng Thái");
-            List<List<Object>> data = Arrays.asList(Arrays.asList(
-                    p.getProduct().getCode(),
-                    p.getVariant().getVariantName(),
+            List<Object> rowData = Arrays.asList(
+                    p.getId() != null ? p.getId().toString() : "",
+                    p.getProduct() != null ? p.getProduct().getCode() : "",
+                    p.getVariant() != null ? p.getVariant().getVariantName() : "",
                     p.getStore() != null ? p.getStore().getName() : "Tất cả chi nhánh",
-                    p.getBaseRetailPrice(),
-                    p.getStatus()
-            ));
-            excelService.exportToExcel("Price_Table_Export.xlsx", headers, data);
-        } catch (Exception e) { System.err.println("Lỗi Excel: " + e.getMessage()); }
+                    p.getBaseCostPrice() != null ? p.getBaseCostPrice().toString() : "0",
+                    p.getBaseRetailPrice() != null ? p.getBaseRetailPrice().toString() : "0",
+                    p.getWholesalePrice() != null ? p.getWholesalePrice().toString() : "0",
+                    p.getStatus() != null ? p.getStatus() : "",
+                    actionType,
+                    LocalDateTime.now().toString()
+            );
+            googleSheetService.appendRowToSheet("ProductPricing", rowData);
+        } catch (Exception e) {
+            System.err.println("Lỗi đồng bộ Google Sheets (ProductPricing): " + e.getMessage());
+        }
     }
 
     private PriceResponse mapToResponse(ProductPricing p) {
         return PriceResponse.builder()
                 .id(p.getId())
-                .productCode(p.getProduct().getCode())
-                .variantName(p.getVariant() != null ? p.getVariant().getVariantName() : p.getProduct().getName())
+                .productCode(p.getProduct() != null ? p.getProduct().getCode() : null)
+                .variantName(p.getVariant() != null ? p.getVariant().getVariantName() : (p.getProduct() != null ? p.getProduct().getName() : ""))
                 .storeName(p.getStore() != null ? p.getStore().getName() : "Tất cả chi nhánh")
                 .costPrice(p.getBaseCostPrice())
                 .retailPrice(p.getBaseRetailPrice())

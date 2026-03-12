@@ -6,10 +6,11 @@ import org.example.backend9.dto.response.inventory.ProductResponse;
 import org.example.backend9.entity.inventory.*;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.core.SupplierRepository;
-import org.example.backend9.service.ExcelService;
+import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,7 +26,7 @@ public class ProductService {
     private final ColorRepository colorRepository;
     private final SizeRepository sizeRepository;
     private final UnitRepository unitRepository;
-    private final ExcelService excelService;
+    private final GoogleSheetService googleSheetService;
 
     public List<ProductResponse> getAll() {
         return productRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
@@ -58,7 +59,8 @@ public class ProductService {
             createVariants(savedProduct, request.getVariants());
         }
 
-        exportToExcel(savedProduct, request);
+        syncToGoogleSheets(savedProduct, request, "Tạo mới");
+
         return mapToResponse(savedProduct);
     }
 
@@ -72,24 +74,24 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
 
-
         Long unitId = (request.getUnitId() != null) ? request.getUnitId() :
                 (request.getVariants() != null && !request.getVariants().isEmpty() ? request.getVariants().get(0).getUnitId() : null);
         if (unitId != null) {
             product.setUnit(unitRepository.findById(unitId).orElse(null));
         }
 
-        productRepository.save(product);
-
+        Product savedProduct = productRepository.save(product);
 
         List<ProductVariant> oldVariants = variantRepository.findByProductId(id);
         variantRepository.deleteAll(oldVariants);
 
         if (request.getVariants() != null) {
-            createVariants(product, request.getVariants());
+            createVariants(savedProduct, request.getVariants());
         }
 
-        return mapToResponse(product);
+        syncToGoogleSheets(savedProduct, request, "Cập nhật");
+
+        return mapToResponse(savedProduct);
     }
 
     private void createVariants(Product product, List<ProductRequest.VariantRequest> variantRequests) {
@@ -110,7 +112,6 @@ public class ProductService {
 
             ProductVariant savedVariant = variantRepository.save(variant);
 
-
             ProductPricing pricing = new ProductPricing();
             pricing.setProduct(product);
             pricing.setVariant(savedVariant);
@@ -129,15 +130,25 @@ public class ProductService {
         return "Đã xóa thành công sản phẩm: " + name;
     }
 
-    private void exportToExcel(Product p, ProductRequest req) {
+    private void syncToGoogleSheets(Product p, ProductRequest req, String actionType) {
         try {
-            List<String> headers = Arrays.asList("Mã SP", "Tên SP", "Số lượng biến thể", "Trạng thái");
             int variantCount = req.getVariants() != null ? req.getVariants().size() : 0;
-            List<List<Object>> data = Arrays.asList(Arrays.asList(
-                    p.getCode(), p.getName(), variantCount, p.getStatus().toString()
-            ));
-            excelService.exportToExcel("Product_Complex_Export.xlsx", headers, data);
-        } catch (Exception e) { System.err.println("Lỗi Excel: " + e.getMessage()); }
+
+            List<Object> rowData = Arrays.asList(
+                    p.getId() != null ? p.getId().toString() : "",
+                    p.getCode() != null ? p.getCode() : "",
+                    p.getName() != null ? p.getName() : "",
+                    p.getCategory() != null ? p.getCategory().getName() : "",
+                    p.getSupplier() != null ? p.getSupplier().getName() : "",
+                    String.valueOf(variantCount),
+                    p.getStatus() != null ? p.getStatus().name() : "ACTIVE",
+                    actionType,
+                    LocalDateTime.now().toString()
+            );
+            googleSheetService.appendRowToSheet("Product", rowData);
+        } catch (Exception e) {
+            System.err.println("Lỗi đồng bộ Google Sheets (Product): " + e.getMessage());
+        }
     }
 
     private ProductResponse mapToResponse(Product product) {
