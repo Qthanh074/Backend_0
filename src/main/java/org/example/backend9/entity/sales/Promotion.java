@@ -25,8 +25,8 @@ public class Promotion {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
-    private DiscountType discountType; // Cố định hay Phần trăm
+    @Column(length = 20, nullable = false, columnDefinition = "VARCHAR(20)") // Thêm cái này
+    private DiscountType discountType;
 
     @Column(nullable = false)
     private BigDecimal discountValue; // Giá trị (VD: 10 hoặc 50000)
