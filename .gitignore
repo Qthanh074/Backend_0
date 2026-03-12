@@ -35,3 +35,4 @@ src/main/resources/application.properties
 
 # Ignore Google Cloud Credentials
 *gg-sheet-*.json
+src/main/resources/n8nql-489920-1802c7da65a5.json
