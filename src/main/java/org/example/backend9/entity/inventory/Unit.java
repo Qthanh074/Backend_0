@@ -3,6 +3,7 @@ package org.example.backend9.entity.inventory;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.backend9.enums.EntityStatus;
 
 @Entity
 @Table(name = "units")
@@ -18,4 +19,7 @@ public class Unit {
     private String description;
 
     private Boolean isBaseUnit; // true = smallest unit for conversion
+
+    @Enumerated(EnumType.STRING)
+    private EntityStatus status;
 }
