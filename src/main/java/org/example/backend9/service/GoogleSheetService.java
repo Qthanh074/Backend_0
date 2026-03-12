@@ -22,7 +22,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
-public class GoogleService {
+public class GoogleSheetService {
 
     @Value("${google.credentials.file.path}")
     private Resource credentialsResource;

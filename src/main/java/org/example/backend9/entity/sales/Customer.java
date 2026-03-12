@@ -35,8 +35,8 @@ public class Customer {
     private Area area; // Thuộc khu vực nào
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private CustomerTier tier = CustomerTier.BRONZE; // Hạng thẻ (Bạc, Vàng...)
+    @Column(length = 20, columnDefinition = "VARCHAR(20)") // Thêm cái này
+    private CustomerTier tier = CustomerTier.BRONZE;
 
     // LIÊN QUAN TỚI TÍCH ĐIỂM (Loyalty)
     private Integer currentPoints = 0; // Điểm tích lũy hiện tại
