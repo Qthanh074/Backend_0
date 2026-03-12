@@ -2,42 +2,29 @@ package org.example.backend9.controller.sales;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend9.dto.request.sales.OrderRequest;
-import org.example.backend9.dto.response.ApiResponse;
 import org.example.backend9.dto.response.sales.OrderResponse;
-import org.example.backend9.entity.core.Employee;
-import org.example.backend9.repository.core.EmployeeRepository;
 import org.example.backend9.service.sales.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/sales/orders")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'CASHIER')") // Cho phép cả thu ngân tạo đơn
 public class OrderController {
 
     private final OrderService orderService;
-    private final EmployeeRepository employeeRepository;
 
-    @PostMapping("/checkout")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
-    public ResponseEntity<ApiResponse<OrderResponse>> checkout(
-            @RequestBody OrderRequest request,
-            @AuthenticationPrincipal UserDetails currentUser // Lấy user từ Token
-    ) {
-        // Tìm thông tin nhân viên đang đăng nhập
-        Employee employee = employeeRepository.findByEmail(currentUser.getUsername())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy nhân viên đăng nhập!"));
+    @PostMapping
+    public ResponseEntity<OrderResponse> createOrder(@RequestBody OrderRequest request) {
 
-        if (employee.getStore() == null) {
-            throw new RuntimeException("Nhân viên chưa được gán chi nhánh (Store)!");
-        }
+        // TODO: Trong thực tế, b sẽ lấy thông tin Employee (nhân viên bán hàng) và Store (cửa hàng)
+        // từ token JWT của người đang đăng nhập.
+        // Hiện tại để test API nhanh, mình sẽ truyền null vào, trong Service đã xử lý an toàn.
 
-        // Thực hiện thanh toán
-        OrderResponse response = orderService.createOrder(request, employee, employee.getStore());
+        OrderResponse response = orderService.createOrder(request, null, null);
 
-        return ResponseEntity.ok(new ApiResponse<>(true, "Thanh toán và lưu Google Sheet thành công!", response));
+        return ResponseEntity.ok(response);
     }
 }
