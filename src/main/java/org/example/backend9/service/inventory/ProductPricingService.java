@@ -1,8 +1,8 @@
 package org.example.backend9.service.inventory;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend9.dto.request.inventory.PriceSetupRequest;
-import org.example.backend9.dto.response.inventory.PriceResponse;
+import org.example.backend9.dto.request.inventory.ProductPricingRequest;
+import org.example.backend9.dto.response.inventory.ProductPricingResponse;
 import org.example.backend9.entity.inventory.*;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.repository.inventory.*;
@@ -24,31 +24,37 @@ public class ProductPricingService {
     private final StoreRepository storeRepository;
     private final GoogleSheetService googleSheetService;
 
-    public List<PriceResponse> getAll() {
+    public List<ProductPricingResponse> getAll() {
         return pricingRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     @Transactional
-    public PriceResponse setupPrice(PriceSetupRequest request) {
+    public ProductPricingResponse setupPrice(ProductPricingRequest request) {
+        // 1. Kiểm tra xem đã có bản ghi giá cho Variant này tại Store này chưa
+        // Lưu ý: Repository cần có hàm findByVariantIdAndStoreId
         ProductPricing pricing = pricingRepository
                 .findByVariantIdAndStoreId(request.getVariantId(), request.getStoreId())
-                .orElse(new ProductPricing());
+                .stream().findFirst().orElse(new ProductPricing());
 
-        ProductVariant variant = variantRepository.findById(Long.valueOf(request.getVariantId()))
-                .orElseThrow(() -> new RuntimeException("Không thấy biến thể"));
+        // 2. Lấy thông tin Variant để gán Product gốc
+        ProductVariant variant = variantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy biến thể ID: " + request.getVariantId()));
 
         pricing.setVariant(variant);
-        pricing.setProduct(variant.getProduct());
+        pricing.setProduct(variant.getProduct()); // Tự động lấy Product từ Variant
 
+        // 3. Gán Store nếu có
         if (request.getStoreId() != null) {
-            Store store = storeRepository.findById(request.getStoreId()).orElse(null);
+            Store store = storeRepository.findById(request.getStoreId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy cửa hàng ID: " + request.getStoreId()));
             pricing.setStore(store);
         }
 
-        pricing.setBaseCostPrice(request.getCostPrice());
-        pricing.setBaseRetailPrice(request.getRetailPrice());
+        // 4. Gán giá (Đồng bộ tên field với Entity và Request)
+        pricing.setBaseCostPrice(request.getBaseCostPrice());
+        pricing.setBaseRetailPrice(request.getBaseRetailPrice());
         pricing.setWholesalePrice(request.getWholesalePrice());
-        pricing.setStatus(request.getStatus());
+        pricing.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
 
         ProductPricing saved = pricingRepository.save(pricing);
 
@@ -59,24 +65,29 @@ public class ProductPricingService {
 
     @Transactional
     public String delete(Integer id) {
-        pricingRepository.deleteById(Long.valueOf(id));
-        return "Đã xóa bảng giá thành công";
+        // Sử dụng Integer vì ID của ProductPricing là Integer
+        ProductPricing pricing = pricingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bảng giá"));
+        pricingRepository.delete(pricing);
+        return "Đã xóa bảng giá thành công cho SKU: " + (pricing.getVariant() != null ? pricing.getVariant().getSku() : "");
     }
 
     @Transactional
     public void approvePrice(Integer id) {
-        ProductPricing pricing = pricingRepository.findById(Long.valueOf(id)).orElseThrow();
+        ProductPricing pricing = pricingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy bảng giá"));
         pricing.setStatus("Đang áp dụng");
         ProductPricing saved = pricingRepository.save(pricing);
         syncToGoogleSheets(saved, "Duyệt giá");
     }
+
     private void syncToGoogleSheets(ProductPricing p, String actionType) {
         try {
             List<Object> rowData = Arrays.asList(
                     p.getId() != null ? p.getId().toString() : "",
                     p.getProduct() != null ? p.getProduct().getCode() : "",
-                    p.getVariant() != null ? p.getVariant().getVariantName() : "",
-                    p.getStore() != null ? p.getStore().getName() : "Tất cả chi nhánh",
+                    p.getVariant() != null ? p.getVariant().getSku() : "", // Dùng SKU cho chuyên nghiệp
+                    p.getStore() != null ? p.getStore().getName() : "Hệ thống chung",
                     p.getBaseCostPrice() != null ? p.getBaseCostPrice().toString() : "0",
                     p.getBaseRetailPrice() != null ? p.getBaseRetailPrice().toString() : "0",
                     p.getWholesalePrice() != null ? p.getWholesalePrice().toString() : "0",
@@ -90,14 +101,18 @@ public class ProductPricingService {
         }
     }
 
-    private PriceResponse mapToResponse(ProductPricing p) {
-        return PriceResponse.builder()
+    private ProductPricingResponse mapToResponse(ProductPricing p) {
+        return ProductPricingResponse.builder()
                 .id(p.getId())
-                .productCode(p.getProduct() != null ? p.getProduct().getCode() : null)
-                .variantName(p.getVariant() != null ? p.getVariant().getVariantName() : (p.getProduct() != null ? p.getProduct().getName() : ""))
-                .storeName(p.getStore() != null ? p.getStore().getName() : "Tất cả chi nhánh")
-                .costPrice(p.getBaseCostPrice())
-                .retailPrice(p.getBaseRetailPrice())
+                .productId(p.getProduct() != null ? p.getProduct().getId().longValue() : null)
+                .productName(p.getProduct() != null ? p.getProduct().getName() : "")
+                .variantId(p.getVariant() != null ? p.getVariant().getId().longValue() : null)
+                .sku(p.getVariant() != null ? p.getVariant().getSku() : "")
+                .variantName(p.getVariant() != null ? p.getVariant().getVariantName() : "")
+                .storeId(p.getStore() != null ? p.getStore().getId() : null)
+                .storeName(p.getStore() != null ? p.getStore().getName() : "Hệ thống chung")
+                .baseCostPrice(p.getBaseCostPrice())
+                .baseRetailPrice(p.getBaseRetailPrice())
                 .wholesalePrice(p.getWholesalePrice())
                 .status(p.getStatus())
                 .build();
