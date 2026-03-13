@@ -48,18 +48,34 @@ public class ProductService {
         product.setBaseRetailPrice(request.getBaseRetailPrice());
         product.setBaseWholesalePrice(request.getBaseWholesalePrice());
 
-        product.setCategory(categoryRepository.findById(Long.valueOf(request.getCategoryId().intValue())).orElseThrow());
-        product.setSupplier(supplierRepository.findById(request.getSupplierId().intValue()).orElseThrow());
-        product.setUnit(unitRepository.findById(request.getUnitId()).orElseThrow());
+        // --- PHẦN SỬA LỖI ÉP KIỂU VÀ CHECK NULL ---
+
+        // Xử lý Category
+        if (request.getCategoryId() != null) {
+            categoryRepository.findById(request.getCategoryId().longValue())
+                    .ifPresent(product::setCategory);
+        }
+
+        // Xử lý Supplier
+        if (request.getSupplierId() != null) {
+            supplierRepository.findById(Math.toIntExact(request.getSupplierId()))
+                    .ifPresent(product::setSupplier);
+        }
+
+        // Xử lý Unit
+        if (request.getUnitId() != null) {
+            unitRepository.findById(request.getUnitId())
+                    .ifPresent(product::setUnit);
+        }
+        // ------------------------------------------
 
         Product savedProduct = productRepository.save(product);
 
-        // GỌI QUA SERVICE BIẾN THỂ VỚI ĐỐI TƯỢNG DTO (FIX LỖI ARGUMENT)
-        if (request.getVariants() != null) {
+        // Xử lý biến thể (Variants)
+        if (request.getVariants() != null && !request.getVariants().isEmpty()) {
             for (ProductRequest.VariantRequest vReq : request.getVariants()) {
-                // Tạo DTO cho serviceVariant
                 VariantRequest serviceVariantReq = new VariantRequest();
-                serviceVariantReq.setProductId(savedProduct.getId().longValue());
+                serviceVariantReq.setProductId(Long.valueOf(savedProduct.getId())); // Dùng trực tiếp ID vì cùng kiểu Long
                 serviceVariantReq.setSku(vReq.getSku());
                 serviceVariantReq.setBarcode(vReq.getBarcode());
                 serviceVariantReq.setQuantity(vReq.getQuantity());
@@ -77,6 +93,7 @@ public class ProductService {
             }
         }
 
+        // Đồng bộ Google Sheets
         syncToGoogleSheets(savedProduct, request.getVariants() != null ? request.getVariants().size() : 0, "Tạo mới");
 
         return mapToResponse(savedProduct);
