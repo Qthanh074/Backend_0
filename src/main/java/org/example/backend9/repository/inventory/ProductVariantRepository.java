@@ -10,4 +10,6 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     // Hàm này dùng để tìm tất cả các biến thể của một sản phẩm
     List<ProductVariant> findByProductId(Long productId);
+
+    boolean existsBySku(String sku);
 }

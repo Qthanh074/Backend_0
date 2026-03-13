@@ -2,7 +2,9 @@ package org.example.backend9.service.inventory;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend9.dto.request.inventory.ProductRequest;
+import org.example.backend9.dto.request.inventory.VariantRequest; // DTO dùng cho Service
 import org.example.backend9.dto.response.inventory.ProductResponse;
+import org.example.backend9.dto.response.inventory.VariantDetailResponse;
 import org.example.backend9.entity.inventory.*;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.core.SupplierRepository;
@@ -19,14 +21,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductService {
     private final ProductRepository productRepository;
-    private final ProductVariantRepository variantRepository;
-    private final ProductPricingRepository pricingRepository;
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
-    private final ColorRepository colorRepository;
-    private final SizeRepository sizeRepository;
     private final UnitRepository unitRepository;
     private final GoogleSheetService googleSheetService;
+
+    // TIÊM SERVICE BIẾN THỂ VÀO ĐỂ DÙNG CHUNG LOGIC
+    private final ProductVariantService variantService;
 
     public List<ProductResponse> getAll() {
         return productRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
@@ -42,31 +43,48 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
 
-        product.setCategory(categoryRepository.findById(request.getCategoryId()).orElseThrow());
-        product.setSupplier(supplierRepository.findById(Math.toIntExact(request.getSupplierId())).orElseThrow());
+        // Gán 3 trường giá gốc từ Request
+        product.setBaseCostPrice(request.getBaseCostPrice());
+        product.setBaseRetailPrice(request.getBaseRetailPrice());
+        product.setBaseWholesalePrice(request.getBaseWholesalePrice());
 
-
-        Long unitId = (request.getUnitId() != null) ? request.getUnitId() :
-                (request.getVariants() != null && !request.getVariants().isEmpty() ? request.getVariants().get(0).getUnitId() : null);
-
-        if (unitId != null) {
-            product.setUnit(unitRepository.findById(unitId).orElse(null));
-        }
+        product.setCategory(categoryRepository.findById(Long.valueOf(request.getCategoryId().intValue())).orElseThrow());
+        product.setSupplier(supplierRepository.findById(request.getSupplierId().intValue()).orElseThrow());
+        product.setUnit(unitRepository.findById(request.getUnitId()).orElseThrow());
 
         Product savedProduct = productRepository.save(product);
 
+        // GỌI QUA SERVICE BIẾN THỂ VỚI ĐỐI TƯỢNG DTO (FIX LỖI ARGUMENT)
         if (request.getVariants() != null) {
-            createVariants(savedProduct, request.getVariants());
+            for (ProductRequest.VariantRequest vReq : request.getVariants()) {
+                // Tạo DTO cho serviceVariant
+                VariantRequest serviceVariantReq = new VariantRequest();
+                serviceVariantReq.setProductId(savedProduct.getId().longValue());
+                serviceVariantReq.setSku(vReq.getSku());
+                serviceVariantReq.setBarcode(vReq.getBarcode());
+                serviceVariantReq.setQuantity(vReq.getQuantity());
+                serviceVariantReq.setColorId(vReq.getColorId());
+                serviceVariantReq.setSizeId(vReq.getSizeId());
+                serviceVariantReq.setUnitId(vReq.getUnitId());
+                serviceVariantReq.setCostPrice(vReq.getCostPrice());
+                serviceVariantReq.setSellPrice(vReq.getSellPrice());
+                serviceVariantReq.setWholesalePrice(vReq.getWholesalePrice());
+                serviceVariantReq.setStatus(vReq.getStatus());
+                serviceVariantReq.setExtraCost(vReq.getExtraCost());
+                serviceVariantReq.setExtraPrice(vReq.getExtraPrice());
+
+                variantService.createVariant(serviceVariantReq);
+            }
         }
 
-        syncToGoogleSheets(savedProduct, request, "Tạo mới");
+        syncToGoogleSheets(savedProduct, request.getVariants() != null ? request.getVariants().size() : 0, "Tạo mới");
 
         return mapToResponse(savedProduct);
     }
 
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
-        Product product = productRepository.findById(id).orElseThrow(() -> new RuntimeException("Không thấy SP"));
+        Product product = productRepository.findById(Long.valueOf(id.intValue())).orElseThrow(() -> new RuntimeException("Không thấy SP"));
 
         product.setName(request.getName());
         product.setBarcode(request.getBarcode());
@@ -74,66 +92,59 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
 
-        Long unitId = (request.getUnitId() != null) ? request.getUnitId() :
-                (request.getVariants() != null && !request.getVariants().isEmpty() ? request.getVariants().get(0).getUnitId() : null);
-        if (unitId != null) {
-            product.setUnit(unitRepository.findById(unitId).orElse(null));
-        }
+        product.setBaseCostPrice(request.getBaseCostPrice());
+        product.setBaseRetailPrice(request.getBaseRetailPrice());
+        product.setBaseWholesalePrice(request.getBaseWholesalePrice());
+
+        product.setCategory(categoryRepository.findById(Long.valueOf(request.getCategoryId().intValue())).orElseThrow());
+        product.setSupplier(supplierRepository.findById(request.getSupplierId().intValue()).orElseThrow());
+        product.setUnit(unitRepository.findById(request.getUnitId()).orElseThrow());
 
         Product savedProduct = productRepository.save(product);
 
-        List<ProductVariant> oldVariants = variantRepository.findByProductId(id);
-        variantRepository.deleteAll(oldVariants);
-
-        if (request.getVariants() != null) {
-            createVariants(savedProduct, request.getVariants());
+        // Xóa biến thể cũ thông qua Service chuyên biệt
+        List<VariantDetailResponse> oldVariants = variantService.getVariantsByProductId(id);
+        for (VariantDetailResponse old : oldVariants) {
+            variantService.deleteVariant(old.getId());
         }
 
-        syncToGoogleSheets(savedProduct, request, "Cập nhật");
+        // Tạo lại biến thể mới bằng DTO (FIX LỖI ARGUMENT)
+        if (request.getVariants() != null) {
+            for (ProductRequest.VariantRequest vReq : request.getVariants()) {
+                VariantRequest serviceVariantReq = new VariantRequest();
+                serviceVariantReq.setProductId(savedProduct.getId().longValue());
+                serviceVariantReq.setSku(vReq.getSku());
+                serviceVariantReq.setBarcode(vReq.getBarcode());
+                serviceVariantReq.setQuantity(vReq.getQuantity());
+                serviceVariantReq.setColorId(vReq.getColorId());
+                serviceVariantReq.setSizeId(vReq.getSizeId());
+                serviceVariantReq.setUnitId(vReq.getUnitId());
+                serviceVariantReq.setCostPrice(vReq.getCostPrice());
+                serviceVariantReq.setSellPrice(vReq.getSellPrice());
+                serviceVariantReq.setWholesalePrice(vReq.getWholesalePrice());
+                serviceVariantReq.setStatus(vReq.getStatus());
+                serviceVariantReq.setExtraCost(vReq.getExtraCost());
+                serviceVariantReq.setExtraPrice(vReq.getExtraPrice());
+
+                variantService.createVariant(serviceVariantReq);
+            }
+        }
+
+        syncToGoogleSheets(savedProduct, request.getVariants() != null ? request.getVariants().size() : 0, "Cập nhật");
 
         return mapToResponse(savedProduct);
     }
 
-    private void createVariants(Product product, List<ProductRequest.VariantRequest> variantRequests) {
-        for (ProductRequest.VariantRequest vReq : variantRequests) {
-            ProductVariant variant = new ProductVariant();
-            variant.setProduct(product);
-            variant.setSku(vReq.getSku());
-            variant.setBarcode(vReq.getBarcode());
-            variant.setQuantity(vReq.getQuantity());
-            variant.setColor(vReq.getColorId() != null ? colorRepository.findById(vReq.getColorId()).orElse(null) : null);
-            variant.setSize(vReq.getSizeId() != null ? sizeRepository.findById(vReq.getSizeId()).orElse(null) : null);
-            variant.setUnit(vReq.getUnitId() != null ? unitRepository.findById(vReq.getUnitId()).orElse(null) : null);
-
-
-            String colorName = variant.getColor() != null ? variant.getColor().getName() : "";
-            String sizeName = variant.getSize() != null ? variant.getSize().getName() : "";
-            variant.setVariantName(colorName + (sizeName.isEmpty() ? "" : " - " + sizeName));
-
-            ProductVariant savedVariant = variantRepository.save(variant);
-
-            ProductPricing pricing = new ProductPricing();
-            pricing.setProduct(product);
-            pricing.setVariant(savedVariant);
-            pricing.setBaseCostPrice(vReq.getCostPrice());
-            pricing.setBaseRetailPrice(vReq.getSellPrice());
-            pricing.setWholesalePrice(vReq.getWholesalePrice());
-            pricingRepository.save(pricing);
-        }
-    }
-
     @Transactional
     public String delete(Long id) {
-        Product product = productRepository.findById(id).orElseThrow();
+        Product product = productRepository.findById(Long.valueOf(id.intValue())).orElseThrow();
         String name = product.getName();
         productRepository.delete(product);
         return "Đã xóa thành công sản phẩm: " + name;
     }
 
-    private void syncToGoogleSheets(Product p, ProductRequest req, String actionType) {
+    private void syncToGoogleSheets(Product p, int variantCount, String actionType) {
         try {
-            int variantCount = req.getVariants() != null ? req.getVariants().size() : 0;
-
             List<Object> rowData = Arrays.asList(
                     p.getId() != null ? p.getId().toString() : "",
                     p.getCode() != null ? p.getCode() : "",
@@ -152,39 +163,45 @@ public class ProductService {
     }
 
     private ProductResponse mapToResponse(Product product) {
-        List<ProductVariant> variants = variantRepository.findByProductId(Long.valueOf(product.getId()));
+        // LẤY BIẾN THỂ QUA SERVICE BIẾN THỂ ĐÃ MAP SẴN DTO XỊN
+        List<VariantDetailResponse> variants = variantService.getVariantsByProductId(product.getId().longValue());
 
-        List<ProductResponse.VariantResponse> variantDtos = variants.stream().map(v -> {
-            ProductPricing p = pricingRepository.findByVariantId(Long.valueOf(v.getId())).stream().findFirst().orElse(new ProductPricing());
-
-            return ProductResponse.VariantResponse.builder()
-                    .id(Long.valueOf(v.getId()))
-                    .sku(v.getSku())
-                    .variantName(v.getVariantName())
-                    .barcode(v.getBarcode())
-                    .colorName(v.getColor() != null ? v.getColor().getName() : "")
-                    .sizeName(v.getSize() != null ? v.getSize().getName() : "")
-                    .unitName(v.getUnit() != null ? v.getUnit().getName() : "")
-                    .costPrice(p.getBaseCostPrice())
-                    .sellPrice(p.getBaseRetailPrice())
-                    .wholesalePrice(p.getWholesalePrice())
-                    .quantity(v.getQuantity())
-                    .build();
-        }).collect(Collectors.toList());
+        List<ProductResponse.VariantResponse> variantDtos = variants.stream().map(v ->
+                ProductResponse.VariantResponse.builder()
+                        .id(v.getId())
+                        .sku(v.getSku())
+                        .variantName(v.getVariantName())
+                        .barcode(v.getBarcode())
+                        .colorName(v.getColorName())
+                        .sizeName(v.getSizeName())
+                        .unitName(v.getUnitName())
+                        .costPrice(v.getCostPrice())
+                        .sellPrice(v.getSellPrice())
+                        .wholesalePrice(v.getWholesalePrice())
+                        .quantity(v.getQuantity())
+                        .status(v.getStatus())
+                        .extraCost(v.getExtraCost())
+                        .extraPrice(v.getExtraPrice())
+                        .build()
+        ).collect(Collectors.toList());
 
         return ProductResponse.builder()
-                .id(Long.valueOf(product.getId()))
+                .id(product.getId().longValue())
                 .name(product.getName())
                 .code(product.getCode())
                 .barcode(product.getBarcode())
-                .categoryId(Long.valueOf(product.getCategory() != null ? product.getCategory().getId() : null))
+                .categoryId(product.getCategory() != null ? product.getCategory().getId().longValue() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : "")
-                .supplierId(Long.valueOf(product.getSupplier() != null ? product.getSupplier().getId() : null))
+                .supplierId(product.getSupplier() != null ? product.getSupplier().getId().longValue() : null)
                 .supplierName(product.getSupplier() != null ? product.getSupplier().getName() : "")
+                .unitId(product.getUnit() != null ? product.getUnit().getId().longValue() : null)
                 .unitName(product.getUnit() != null ? product.getUnit().getName() : "")
                 .imageUrls(product.getImageUrls())
                 .description(product.getDescription())
                 .status(product.getStatus())
+                .baseCostPrice(product.getBaseCostPrice())
+                .baseRetailPrice(product.getBaseRetailPrice())
+                .baseWholesalePrice(product.getBaseWholesalePrice())
                 .variants(variantDtos)
                 .build();
     }
