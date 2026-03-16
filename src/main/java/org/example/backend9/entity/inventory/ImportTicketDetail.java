@@ -1,11 +1,17 @@
 package org.example.backend9.entity.inventory;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "import_ticket_details")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ImportTicketDetail {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;

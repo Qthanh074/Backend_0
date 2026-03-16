@@ -5,12 +5,9 @@ import org.example.backend9.dto.request.inventory.ColorRequest;
 import org.example.backend9.dto.response.inventory.ColorResponse;
 import org.example.backend9.entity.inventory.Color;
 import org.example.backend9.repository.inventory.ColorRepository;
-import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,7 +15,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ColorService {
     private final ColorRepository colorRepository;
-    private final GoogleSheetService googleSheetService;
 
     public List<ColorResponse> getAll() {
         return colorRepository.findAll().stream()
@@ -39,19 +35,6 @@ public class ColorService {
 
         Color saved = colorRepository.save(color);
 
-        try {
-            List<Object> rowData = Arrays.asList(
-                    saved.getId().toString(),
-                    saved.getName(),
-                    saved.getHexCode(),
-                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
-                    LocalDateTime.now().toString()
-            );
-            googleSheetService.appendRowToSheet("Color", rowData);
-        } catch (Exception e) {
-            System.err.println("Lỗi đồng bộ Google Sheets (Color): " + e.getMessage());
-        }
-
         return mapToResponse(saved);
     }
 
@@ -59,6 +42,11 @@ public class ColorService {
     public ColorResponse update(Long id, ColorRequest request) {
         Color color = colorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy màu sắc id: " + id));
+
+        // Kiểm tra xem tên mới có bị trùng với màu khác không
+        if (!color.getName().equals(request.getName()) && colorRepository.existsByName(request.getName())) {
+            throw new RuntimeException("Tên màu đã tồn tại!");
+        }
 
         color.setName(request.getName());
         color.setHexCode(request.getHexCode());

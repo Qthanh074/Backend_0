@@ -5,12 +5,9 @@ import org.example.backend9.dto.request.inventory.UnitRequest;
 import org.example.backend9.dto.response.inventory.UnitResponse;
 import org.example.backend9.entity.inventory.Unit;
 import org.example.backend9.repository.inventory.UnitRepository;
-import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,7 +15,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UnitService {
     private final UnitRepository unitRepository;
-    private final GoogleSheetService googleSheetService;
 
     public List<UnitResponse> getAll() {
         return unitRepository.findAll().stream()
@@ -40,20 +36,6 @@ public class UnitService {
 
         Unit saved = unitRepository.save(unit);
 
-        try {
-            List<Object> rowData = Arrays.asList(
-                    saved.getId().toString(),
-                    saved.getName(),
-                    saved.getDescription() != null ? saved.getDescription() : "",
-                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
-                    LocalDateTime.now().toString()
-            );
-
-            googleSheetService.appendRowToSheet("Unit", rowData);
-        } catch (Exception e) {
-            System.err.println("Lỗi đồng bộ Google Sheets (Unit): " + e.getMessage());
-        }
-
         return mapToResponse(saved);
     }
 
@@ -61,6 +43,11 @@ public class UnitService {
     public UnitResponse update(Long id, UnitRequest request) {
         Unit unit = unitRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn vị id: " + id));
+
+        // Kiểm tra xem tên mới có bị trùng với đơn vị khác đã có trong DB không
+        if (!unit.getName().equals(request.getName()) && unitRepository.existsByName(request.getName())) {
+            throw new RuntimeException("Đơn vị tính này đã tồn tại!");
+        }
 
         unit.setName(request.getName());
         unit.setDescription(request.getDescription());

@@ -17,22 +17,22 @@ import java.util.List;
 public class SizeController {
     private final SizeService sizeService;
 
-    @GetMapping
+    @GetMapping("/get-all")
     public ResponseEntity<List<SizeResponse>> getAll() {
         return ResponseEntity.ok(sizeService.getAll());
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<SizeResponse> create(@RequestBody SizeRequest request) {
         return ResponseEntity.ok(sizeService.create(request));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/update/{id}")
     public ResponseEntity<SizeResponse> update(@PathVariable Long id, @RequestBody SizeRequest request) {
         return ResponseEntity.ok(sizeService.update(id, request));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         String message = sizeService.delete(id);
         return ResponseEntity.ok(message);
