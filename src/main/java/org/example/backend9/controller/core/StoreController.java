@@ -58,4 +58,12 @@ public class StoreController {
                         storeService.updateStore(id, request))
         );
     }
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteStore(@PathVariable Integer id) {
+        storeService.deleteStore(id);
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Khóa cửa hàng thành công", null)
+        );
+    }
 }

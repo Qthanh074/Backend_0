@@ -3,6 +3,9 @@ package org.example.backend9.entity.core;
 import org.example.backend9.enums.EntityStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.example.backend9.entity.core.Store;
+
+import java.util.List;
 
 @Entity
 @Table(name = "areas")
@@ -24,4 +27,7 @@ public class Area {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private EntityStatus status = EntityStatus.ACTIVE;
+
+    @OneToMany(mappedBy = "area", fetch = FetchType.LAZY)
+    private List<Store> stores;
 }

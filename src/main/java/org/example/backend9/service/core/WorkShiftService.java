@@ -10,6 +10,7 @@ import org.example.backend9.repository.core.StoreRepository;
 import org.example.backend9.repository.core.WorkShiftRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.backend9.service.core.WorkShiftService;
 
 import java.time.LocalTime;
 import java.util.List;
@@ -27,15 +28,22 @@ public class WorkShiftService {
         this.employeeRepository = employeeRepository;
     }
 
-    private WorkShiftResponse mapToResponse(WorkShift shift) {
+    private WorkShiftResponse mapToResponse(WorkShift entity) {
         WorkShiftResponse res = new WorkShiftResponse();
-        res.setId(shift.getId());
-        res.setShiftDate(shift.getShiftDate());
-        res.setStartTime(shift.getStartTime());
-        res.setEndTime(shift.getEndTime());
-        res.setNotes(shift.getNotes());
-        if (shift.getStore() != null) res.setStoreName(shift.getStore().getName());
-        if (shift.getEmployee() != null) res.setEmployeeName(shift.getEmployee().getFullName());
+        res.setId(entity.getId());
+        res.setShiftDate(entity.getShiftDate());
+        res.setStartTime(entity.getStartTime());
+        res.setEndTime(entity.getEndTime());
+        res.setNotes(entity.getNotes());
+
+        // 👉 QUAN TRỌNG: Gán tên từ Entity sang DTO
+        if (entity.getEmployee() != null) {
+            res.setEmployeeName(entity.getEmployee().getFullName());
+        }
+        if (entity.getStore() != null) {
+            res.setStoreName(entity.getStore().getName());
+        }
+
         return res;
     }
 
