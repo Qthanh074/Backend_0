@@ -181,10 +181,15 @@ public class ProductVariantService {
     private void syncToGoogleSheets(Product product, ProductVariant variant, ProductPricing pricing, String action) {
         try {
             List<Object> rowData = Arrays.asList(
-                    product.getCode(), variant.getSku(), variant.getBarcode() != null ? variant.getBarcode() : "",
-                    variant.getVariantName(), pricing.getBaseCostPrice() != null ? pricing.getBaseCostPrice().toString() : "0",
+                    product.getCode(),
+                    variant.getSku(),
+                    variant.getBarcode() != null ? variant.getBarcode() : "",
+                    variant.getVariantName(),
+                    pricing.getBaseCostPrice() != null ? pricing.getBaseCostPrice().toString() : "0", // Check null ở đây
                     pricing.getBaseRetailPrice() != null ? pricing.getBaseRetailPrice().toString() : "0",
-                    variant.getQuantity() != null ? variant.getQuantity().toString() : "0", action, LocalDateTime.now().toString()
+                    variant.getQuantity() != null ? variant.getQuantity().toString() : "0",
+                    action,
+                    LocalDateTime.now().toString()
             );
             googleSheetService.appendRowToSheet("ProductVariant", rowData);
         } catch (Exception e) {

@@ -5,12 +5,9 @@ import org.example.backend9.dto.request.inventory.CategoryRequest;
 import org.example.backend9.dto.response.inventory.CategoryResponse;
 import org.example.backend9.entity.inventory.Category;
 import org.example.backend9.repository.inventory.CategoryRepository;
-import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,7 +15,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
-    private final GoogleSheetService googleSheetService;
 
     public List<CategoryResponse> getAll() {
         return categoryRepository.findAll().stream()
@@ -45,22 +41,35 @@ public class CategoryService {
 
         Category saved = categoryRepository.save(category);
 
-        try {
-            List<Object> rowData = Arrays.asList(
-                    saved.getId().toString(),
-                    saved.getName(),
-                    saved.getDescription() != null ? saved.getDescription() : "",
-                    saved.getParent() != null ? saved.getParent().getName() : "Không có",
-                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
-                    LocalDateTime.now().toString()
-            );
+        return mapToResponse(saved);
+    }
 
-            googleSheetService.appendRowToSheet("Category", rowData);
-        } catch (Exception e) {
-            System.err.println("Lỗi đồng bộ Google Sheets (Category): " + e.getMessage());
+    @Transactional
+    public CategoryResponse update(Long id, CategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục id: " + id));
+
+        if (!category.getName().equals(request.getName()) && categoryRepository.existsByName(request.getName())) {
+            throw new RuntimeException("Tên danh mục này đã tồn tại!");
         }
 
-        return mapToResponse(saved);
+        category.setName(request.getName());
+        category.setDescription(request.getDescription());
+        category.setStatus(request.getStatus());
+
+        if (request.getParentId() != null) {
+            if (request.getParentId().equals(id)) {
+                throw new RuntimeException("Danh mục không thể tự làm danh mục cha của chính nó!");
+            }
+            Category parent = categoryRepository.findById(request.getParentId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy danh mục cha"));
+            category.setParent(parent);
+        } else {
+            category.setParent(null);
+        }
+
+        Category updated = categoryRepository.save(category);
+        return mapToResponse(updated);
     }
 
     @Transactional

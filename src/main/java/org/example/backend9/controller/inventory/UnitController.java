@@ -17,22 +17,22 @@ import java.util.List;
 public class UnitController {
     private final UnitService unitService;
 
-    @GetMapping
+    @GetMapping("/get-all")
     public ResponseEntity<List<UnitResponse>> getAll() {
         return ResponseEntity.ok(unitService.getAll());
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<UnitResponse> create(@RequestBody UnitRequest request) {
         return ResponseEntity.ok(unitService.create(request));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/update/{id}")
     public ResponseEntity<UnitResponse> update(@PathVariable Long id, @RequestBody UnitRequest request) {
         return ResponseEntity.ok(unitService.update(id, request));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         String message = unitService.delete(id);
         return ResponseEntity.ok(message);

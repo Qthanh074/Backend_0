@@ -17,17 +17,22 @@ import java.util.List;
 public class CategoryController {
     private final CategoryService categoryService;
 
-    @GetMapping
+    @GetMapping("/get-all")
     public ResponseEntity<List<CategoryResponse>> getAll() {
         return ResponseEntity.ok(categoryService.getAll());
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<CategoryResponse> create(@RequestBody CategoryRequest request) {
         return ResponseEntity.ok(categoryService.create(request));
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/update/{id}")
+    public ResponseEntity<CategoryResponse> update(@PathVariable Long id, @RequestBody CategoryRequest request) {
+        return ResponseEntity.ok(categoryService.update(id, request));
+    }
+
+    @DeleteMapping("/delete/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.delete(id));
     }
