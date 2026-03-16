@@ -15,4 +15,6 @@ public class EmployeeResponse {
 
     // Chỉ trả về thông tin cơ bản của cửa hàng (tránh lồng ghép quá sâu)
     private String storeName;
+    private Integer storeId;
+    private Boolean isActive;
 }

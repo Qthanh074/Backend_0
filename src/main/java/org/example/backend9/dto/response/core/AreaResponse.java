@@ -10,4 +10,5 @@ public class AreaResponse {
     private String name;
     private String description;
     private EntityStatus status;
+    private Integer storeCount;
 }

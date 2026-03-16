@@ -51,4 +51,23 @@ public class EmployeeManageController {
                 new ApiResponse<>(true, "Đổi trạng thái tài khoản thành công", null)
         );
     }
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
+            @Valid @RequestBody org.example.backend9.dto.request.core.EmployeeCreateRequest request) {
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Thêm nhân viên thành công",
+                        employeeManageService.createEmployee(request))
+        );
+    }
+
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteEmployee(@PathVariable Integer id) {
+        employeeManageService.deleteEmployee(id); // Nhớ viết hàm này trong Service nhé
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Xóa nhân viên thành công", null)
+        );
+    }
 }

@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
+import org.example.backend9.enums.EntityStatus; // Nhớ import cái này
 
 @Data
 public class StoreRequest {
@@ -24,4 +25,6 @@ public class StoreRequest {
 
     @NotNull(message = "ID Khu vực không được để trống")
     private Integer areaId;
+
+    private EntityStatus status;
 }

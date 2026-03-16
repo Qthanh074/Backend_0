@@ -27,9 +27,18 @@ public class AreaService {
         res.setName(area.getName());
         res.setDescription(area.getDescription());
         res.setStatus(area.getStatus());
+
+        // 👉 THÊM DÒNG NÀY: Đếm số cửa hàng từ List<Store> trong Entity Area
+        // Giả sử trong Entity Area bạn đã đặt: @OneToMany(mappedBy = "area") List<Store> stores;
+        if (area.getStores() != null) {
+            res.setStoreCount(area.getStores().size());
+        } else {
+            res.setStoreCount(0);
+        }
+
         return res;
     }
-
+    @Transactional(readOnly = true)
     public List<AreaResponse> getAllAreas() {
         return areaRepository.findAll().stream()
                 .map(this::mapToResponse)

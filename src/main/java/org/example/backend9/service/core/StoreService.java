@@ -73,7 +73,18 @@ public class StoreService {
         store.setPhone(request.getPhone());
         store.setEmail(request.getEmail());
         store.setArea(area);
-
+        if (request.getStatus() != null) {
+            store.setStatus(request.getStatus());
+        }
         return mapToResponse(storeRepository.save(store));
+    }
+    @Transactional
+    public void deleteStore(Integer id) {
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
+
+        // Chuyển trạng thái sang Ngừng hoạt động thay vì xóa hẳn
+        store.setStatus(EntityStatus.INACTIVE);
+        storeRepository.save(store);
     }
 }
