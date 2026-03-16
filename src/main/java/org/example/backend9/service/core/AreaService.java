@@ -50,12 +50,18 @@ public class AreaService {
     public AreaResponse updateArea(Integer id, AreaRequest request) {
         Area area = areaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy khu vực"));
+
         area.setCode(request.getCode().toUpperCase());
         area.setName(request.getName());
         area.setDescription(request.getDescription());
+
+
+        if (request.getStatus() != null) {
+            area.setStatus(request.getStatus());
+        }
+
         return mapToResponse(areaRepository.save(area));
     }
-
     @Transactional
     public void deleteArea(Integer id) {
         Area area = areaRepository.findById(id)

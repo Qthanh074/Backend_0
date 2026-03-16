@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/pricings")
+@RequestMapping("/api/inventory/pricings")
 @RequiredArgsConstructor
 public class ProductPricingController {
     private final ProductPricingService pricingService;

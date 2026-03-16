@@ -5,10 +5,11 @@ import org.example.backend9.dto.request.inventory.ColorRequest;
 import org.example.backend9.dto.response.inventory.ColorResponse;
 import org.example.backend9.entity.inventory.Color;
 import org.example.backend9.repository.inventory.ColorRepository;
-import org.example.backend9.service.ExcelService;
+import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ColorService {
     private final ColorRepository colorRepository;
-    private final ExcelService excelService;
+    private final GoogleSheetService googleSheetService;
 
     public List<ColorResponse> getAll() {
         return colorRepository.findAll().stream()
@@ -39,18 +40,16 @@ public class ColorService {
         Color saved = colorRepository.save(color);
 
         try {
-            List<String> headers = Arrays.asList("ID", "Tên màu", "Mã Hex", "Trạng thái");
-            List<List<Object>> data = Arrays.asList(
-                    Arrays.asList(
-                            saved.getId(),
-                            saved.getName(),
-                            saved.getHexCode(),
-                            saved.getStatus().toString()
-                    )
+            List<Object> rowData = Arrays.asList(
+                    saved.getId().toString(),
+                    saved.getName(),
+                    saved.getHexCode(),
+                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
+                    LocalDateTime.now().toString()
             );
-            excelService.exportToExcel("Color_Export.xlsx", headers, data);
+            googleSheetService.appendRowToSheet("Color", rowData);
         } catch (Exception e) {
-            System.err.println("Lỗi ghi file Excel: " + e.getMessage());
+            System.err.println("Lỗi đồng bộ Google Sheets (Color): " + e.getMessage());
         }
 
         return mapToResponse(saved);
@@ -65,12 +64,15 @@ public class ColorService {
         color.setHexCode(request.getHexCode());
         color.setStatus(request.getStatus());
 
-        return mapToResponse(colorRepository.save(color));
+        Color updated = colorRepository.save(color);
+
+        return mapToResponse(updated);
     }
 
     @Transactional
     public String delete(Long id) {
-        Color color = colorRepository.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy màu sắc id: " + id));
+        Color color = colorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy màu sắc id: " + id));
         String name = color.getName();
         colorRepository.delete(color);
         return "Đã xóa thành công màu: " + name;
@@ -79,6 +81,9 @@ public class ColorService {
     private ColorResponse mapToResponse(Color color) {
         return ColorResponse.builder()
                 .id(color.getId() != null ? Long.valueOf(color.getId().toString()) : null)
-                .name(color.getName()).hexCode(color.getHexCode()).status(color.getStatus()).build();
+                .name(color.getName())
+                .hexCode(color.getHexCode())
+                .status(color.getStatus())
+                .build();
     }
 }

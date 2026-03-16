@@ -5,10 +5,11 @@ import org.example.backend9.dto.request.inventory.CategoryRequest;
 import org.example.backend9.dto.response.inventory.CategoryResponse;
 import org.example.backend9.entity.inventory.Category;
 import org.example.backend9.repository.inventory.CategoryRepository;
-import org.example.backend9.service.ExcelService;
+import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CategoryService {
     private final CategoryRepository categoryRepository;
-    private final ExcelService excelService;
+    private final GoogleSheetService googleSheetService;
 
     public List<CategoryResponse> getAll() {
         return categoryRepository.findAll().stream()
@@ -44,21 +45,19 @@ public class CategoryService {
 
         Category saved = categoryRepository.save(category);
 
-        // LUÔN LƯU VÀO EXCEL THEO YÊU CẦU CỦA THÀNH
         try {
-            List<String> headers = Arrays.asList("ID", "Tên danh mục", "Mô tả", "Danh mục cha", "Trạng thái");
-            List<List<Object>> data = Arrays.asList(
-                    Arrays.asList(
-                            saved.getId(),
-                            saved.getName(),
-                            saved.getDescription(),
-                            saved.getParent() != null ? saved.getParent().getName() : "Không có",
-                            saved.getStatus().toString()
-                    )
+            List<Object> rowData = Arrays.asList(
+                    saved.getId().toString(),
+                    saved.getName(),
+                    saved.getDescription() != null ? saved.getDescription() : "",
+                    saved.getParent() != null ? saved.getParent().getName() : "Không có",
+                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
+                    LocalDateTime.now().toString()
             );
-            excelService.exportToExcel("Category_Export.xlsx", headers, data);
+
+            googleSheetService.appendRowToSheet("Category", rowData);
         } catch (Exception e) {
-            System.err.println("Lỗi ghi file Excel: " + e.getMessage());
+            System.err.println("Lỗi đồng bộ Google Sheets (Category): " + e.getMessage());
         }
 
         return mapToResponse(saved);

@@ -2,6 +2,7 @@ package org.example.backend9.dto.request.core;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import org.example.backend9.enums.EntityStatus; // Nhớ chú ý dòng import này nhé
 
 @Data
 public class AreaRequest {
@@ -12,4 +13,7 @@ public class AreaRequest {
     private String name;
 
     private String description;
+
+    // 👉 THÊM BIẾN NÀY ĐỂ HỨNG TRẠNG THÁI TỪ FRONTEND
+    private EntityStatus status;
 }

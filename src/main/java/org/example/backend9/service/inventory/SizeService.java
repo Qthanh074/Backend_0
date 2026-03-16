@@ -5,10 +5,11 @@ import org.example.backend9.dto.request.inventory.SizeRequest;
 import org.example.backend9.dto.response.inventory.SizeResponse;
 import org.example.backend9.entity.inventory.Size;
 import org.example.backend9.repository.inventory.SizeRepository;
-import org.example.backend9.service.ExcelService;
+import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SizeService {
     private final SizeRepository sizeRepository;
-    private final ExcelService excelService;
+    private final GoogleSheetService googleSheetService;
 
     public List<SizeResponse> getAll() {
         return sizeRepository.findAll().stream()
@@ -38,15 +39,18 @@ public class SizeService {
 
         Size saved = sizeRepository.save(size);
 
-        // LUÔN LƯU VÀO EXCEL THEO YÊU CẦU
         try {
-            List<String> headers = Arrays.asList("ID", "Tên kích thước", "Mô tả", "Trạng thái");
-            List<List<Object>> data = Arrays.asList(
-                    Arrays.asList(saved.getId(), saved.getName(), saved.getDescription(), saved.getStatus().toString())
+            List<Object> rowData = Arrays.asList(
+                    saved.getId().toString(),
+                    saved.getName(),
+                    saved.getDescription() != null ? saved.getDescription() : "",
+                    saved.getStatus() != null ? saved.getStatus().name() : "ACTIVE",
+                    LocalDateTime.now().toString()
             );
-            excelService.exportToExcel("Size_Export.xlsx", headers, data);
+
+            googleSheetService.appendRowToSheet("Size", rowData);
         } catch (Exception e) {
-            System.err.println("Lỗi ghi file Excel: " + e.getMessage());
+            System.err.println("Lỗi đồng bộ Google Sheets (Size): " + e.getMessage());
         }
 
         return mapToResponse(saved);
@@ -75,6 +79,9 @@ public class SizeService {
     private SizeResponse mapToResponse(Size size) {
         return SizeResponse.builder()
                 .id(size.getId() != null ? Long.valueOf(size.getId().toString()) : null)
-                .name(size.getName()).description(size.getDescription()).status(size.getStatus()).build();
+                .name(size.getName())
+                .description(size.getDescription())
+                .status(size.getStatus())
+                .build();
     }
 }
