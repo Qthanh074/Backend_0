@@ -29,11 +29,11 @@ public class CashbookTransaction {
 
     // --- PHÂN LOẠI GIAO DỊCH ---
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @Column(length = 50, nullable = false)
     private TransactionType type; // Thu (INCOME) hay Chi (EXPENSE)
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
+    @Column(length = 50, nullable = false)
     private PaymentMethod method; // Tiền mặt (CASH) hay Ngân hàng (BANK_TRANSFER)
 
     private String category; // Nhóm giao dịch (VD: Bán hàng, Nhập hàng, Chi phí vận hành)

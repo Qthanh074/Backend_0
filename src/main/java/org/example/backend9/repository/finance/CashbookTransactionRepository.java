@@ -14,10 +14,9 @@ import java.util.Optional;
 @Repository
 public interface CashbookTransactionRepository extends JpaRepository<CashbookTransaction, Integer> {
 
-    // Lấy số dư gần nhất để tính tồn quỹ
-    Optional<CashbookTransaction> findTopByStoreIdOrderByTransactionDateDesc(Integer storeId);
+    // Lấy giao dịch mới nhất của một Phương thức (CASH hoặc BANK_TRANSFER) để lấy số dư
+    Optional<CashbookTransaction> findTopByMethodOrderByTransactionDateDesc(PaymentMethod method);
 
-    // Query siêu cấp phục vụ tất cả 4 trang UI (Tiền mặt, Ngân hàng, Phiếu Thu, Phiếu Chi)
     @Query("SELECT c FROM CashbookTransaction c WHERE " +
             "(:type IS NULL OR c.type = :type) AND " +
             "(:method IS NULL OR c.method = :method) AND " +
