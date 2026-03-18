@@ -79,4 +79,17 @@ public class CustomerService {
         if (!customerRepository.existsById(id)) throw new RuntimeException("Không tìm thấy khách hàng");
         customerRepository.deleteById(id);
     }
+    public List<CustomerResponse> getLoyaltyMembers(String search) {
+        // Nếu có search thì tìm theo tên hoặc số điện thoại, không thì lấy hết
+        List<Customer> customers;
+        if (search != null && !search.isEmpty()) {
+            customers = customerRepository.findByFullNameContainingOrPhoneContaining(search, search);
+        } else {
+            customers = customerRepository.findAll();
+        }
+
+        return customers.stream()
+                .map(CustomerResponse::fromEntity) // Chuyển sang DTO để trả về
+                .collect(Collectors.toList());
+    }
 }

@@ -14,7 +14,7 @@ public class OrderRequest {
 
     // Danh sách sản phẩm khách mua
     private List<ItemRequest> items;
-
+    private BigDecimal discount;
     @Data
     public static class ItemRequest {
         private Integer productVariantId; // ID của biến thể sản phẩm (Integer)

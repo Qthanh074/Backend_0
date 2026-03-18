@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -47,5 +48,29 @@ public class CashbookTransactionController {
     @PostMapping("/pay-supplier")
     public ResponseEntity<ApiResponse<CashbookTransactionResponse>> paySupplierDebt(@Valid @RequestBody SupplierDebtPaymentRequest request) {
         return ResponseEntity.ok(new ApiResponse<>(true, "Thanh toán công nợ thành công", cashbookService.paySupplierDebt(request)));
+    }
+    @GetMapping("/balance")
+// Đổi Double thành BigDecimal ở đây 👇
+    public ResponseEntity<ApiResponse<BigDecimal>> getCurrentBalance(@RequestParam PaymentMethod method) {
+        return ResponseEntity.ok(new ApiResponse<>(
+                true,
+                "Lấy số dư thành công",
+                cashbookService.getCurrentBalance(method) // Hàm này trong Service trả về BigDecimal
+        ));
+    }
+    // 2. API lấy danh sách phiếu chi (Chuyên dụng cho trang PaymentPage)
+    @GetMapping("/expenses")
+    public ResponseEntity<ApiResponse<List<CashbookTransactionResponse>>> getExpenses(
+            @RequestParam(required = false) PaymentMethod method) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Lấy danh sách phiếu chi thành công",
+                cashbookService.getTransactions(TransactionType.EXPENSE, method, null)));
+    }
+
+    // 3. API lấy danh sách phiếu thu (Chuyên dụng cho trang ReceiptPage)
+    @GetMapping("/incomes")
+    public ResponseEntity<ApiResponse<List<CashbookTransactionResponse>>> getIncomes(
+            @RequestParam(required = false) PaymentMethod method) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Lấy danh sách phiếu thu thành công",
+                cashbookService.getTransactions(TransactionType.INCOME, method, null)));
     }
 }
