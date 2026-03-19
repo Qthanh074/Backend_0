@@ -40,8 +40,8 @@ public class UnitService {
     }
 
     @Transactional
-    public UnitResponse update(Long id, UnitRequest request) {
-        Unit unit = unitRepository.findById(id)
+    public UnitResponse update(Integer id, UnitRequest request) { // 👉 Sửa thành Integer id
+        Unit unit = unitRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn vị id: " + id));
 
         // Kiểm tra xem tên mới có bị trùng với đơn vị khác đã có trong DB không
@@ -57,8 +57,8 @@ public class UnitService {
     }
 
     @Transactional
-    public String delete(Long id) {
-        Unit unit = unitRepository.findById(id)
+    public String delete(Integer id) { // 👉 Sửa thành Integer id
+        Unit unit = unitRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn vị id: " + id));
 
         String unitName = unit.getName();

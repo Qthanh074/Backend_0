@@ -42,7 +42,8 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "promotion_id")
     private Promotion promotion; // Mã KM áp dụng (nếu có)
-
+    @Column(name = "discount")
+    private BigDecimal discount = BigDecimal.ZERO;
     // THÔNG TIN THANH TOÁN
     private BigDecimal subtotal = BigDecimal.ZERO; // Tạm tính
     private BigDecimal discountAmount = BigDecimal.ZERO; // Tiền giảm giá

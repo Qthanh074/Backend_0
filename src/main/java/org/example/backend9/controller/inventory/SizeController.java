@@ -17,22 +17,22 @@ import java.util.List;
 public class SizeController {
     private final SizeService sizeService;
 
-    @GetMapping("/get-all")
+    @GetMapping // 👉 Đã xóa /get-all
     public ResponseEntity<List<SizeResponse>> getAll() {
         return ResponseEntity.ok(sizeService.getAll());
     }
 
-    @PostMapping("/create")
+    @PostMapping // 👉 Đã xóa /create
     public ResponseEntity<SizeResponse> create(@RequestBody SizeRequest request) {
         return ResponseEntity.ok(sizeService.create(request));
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}") // 👉 Đã đổi /update/{id} thành /{id}
     public ResponseEntity<SizeResponse> update(@PathVariable Long id, @RequestBody SizeRequest request) {
         return ResponseEntity.ok(sizeService.update(id, request));
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}") // 👉 Đã đổi /delete/{id} thành /{id}
     public ResponseEntity<String> delete(@PathVariable Long id) {
         String message = sizeService.delete(id);
         return ResponseEntity.ok(message);
