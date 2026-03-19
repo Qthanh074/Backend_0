@@ -7,7 +7,7 @@ import org.example.backend9.service.inventory.ProductService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.dao.DataIntegrityViolationException;
 import java.util.List;
 
 @RestController
@@ -56,9 +56,10 @@ public class ProductController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         try {
-            // Xóa sản phẩm và các biến thể liên quan (Cascade)
             String message = productService.delete(id);
             return ResponseEntity.ok(message);
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.badRequest().body("KHÔNG THỂ XÓA! Sản phẩm này đã phát sinh giao dịch (nằm trong đơn hàng hoặc phiếu nhập). Vui lòng dùng chức năng Cập nhật và chuyển trạng thái sang 'Ngừng bán'.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi khi xóa: " + e.getMessage());
         }

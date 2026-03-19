@@ -15,25 +15,26 @@ import java.util.List;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class UnitController {
+
     private final UnitService unitService;
 
-    @GetMapping("/get-all")
+    @GetMapping
     public ResponseEntity<List<UnitResponse>> getAll() {
         return ResponseEntity.ok(unitService.getAll());
     }
 
-    @PostMapping("/create")
+    @PostMapping
     public ResponseEntity<UnitResponse> create(@RequestBody UnitRequest request) {
         return ResponseEntity.ok(unitService.create(request));
     }
 
-    @PutMapping("/update/{id}")
-    public ResponseEntity<UnitResponse> update(@PathVariable Long id, @RequestBody UnitRequest request) {
+    @PutMapping("/{id}")
+    public ResponseEntity<UnitResponse> update(@PathVariable Integer id, @RequestBody UnitRequest request) { // 👉 Integer id
         return ResponseEntity.ok(unitService.update(id, request));
     }
 
-    @DeleteMapping("/delete/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> delete(@PathVariable Integer id) { // 👉 Integer id
         String message = unitService.delete(id);
         return ResponseEntity.ok(message);
     }

@@ -17,22 +17,22 @@ import java.util.List;
 public class ColorController {
     private final ColorService colorService;
 
-    @GetMapping("/get-all")
+    @GetMapping
     public ResponseEntity<List<ColorResponse>> getAll() {
         return ResponseEntity.ok(colorService.getAll());
     }
 
-    @PostMapping("/create")
+    @PostMapping
     public ResponseEntity<ColorResponse> create(@RequestBody ColorRequest request) {
         return ResponseEntity.ok(colorService.create(request));
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<ColorResponse> update(@PathVariable Long id, @RequestBody ColorRequest request) {
         return ResponseEntity.ok(colorService.update(id, request));
     }
 
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         String message = colorService.delete(id);
         return ResponseEntity.ok(message);

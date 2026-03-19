@@ -39,7 +39,7 @@ public class AreaController {
         );
     }
 
-    // ADMIN + SUPER_ADMIN
+
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AreaResponse>> updateArea(

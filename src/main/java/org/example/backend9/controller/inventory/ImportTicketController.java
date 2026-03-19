@@ -19,7 +19,7 @@ public class ImportTicketController {
 
     private final ImportTicketService importTicketService;
 
-    @GetMapping("/get-all")
+    @GetMapping
     public ResponseEntity<ApiResponse<List<ImportTicketResponse>>> getAll() {
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Lấy danh sách phiếu nhập thành công", importTicketService.getAll())
@@ -33,14 +33,14 @@ public class ImportTicketController {
         );
     }
 
-    @PostMapping("/create")
+    @PostMapping
     public ResponseEntity<ApiResponse<ImportTicketResponse>> create(@RequestBody ImportTicketRequest request) {
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Lập phiếu nhập thành công", importTicketService.create(request))
         );
     }
 
-    @PutMapping("/update/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<ImportTicketResponse>> update(
             @PathVariable Integer id,
             @RequestBody ImportTicketRequest request) {
@@ -49,7 +49,7 @@ public class ImportTicketController {
         );
     }
 
-    @PutMapping("/cancel/{id}")
+    @PutMapping("/{id}/cancel")
     public ResponseEntity<ApiResponse<ImportTicketResponse>> cancel(@PathVariable Integer id) {
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Hủy phiếu nhập thành công", importTicketService.cancelTicket(id))

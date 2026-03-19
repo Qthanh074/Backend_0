@@ -25,9 +25,11 @@ public class ProductService {
     private final SupplierRepository supplierRepository;
     private final UnitRepository unitRepository;
     private final GoogleSheetService googleSheetService;
-
-    // TIÊM SERVICE BIẾN THỂ VÀO ĐỂ DÙNG CHUNG LOGIC
     private final ProductVariantService variantService;
+
+    // 👉 TIÊM THÊM 2 REPOSITORY NÀY ĐỂ XÓA TẬN GỐC LỖI KHÓA NGOẠI
+    private final ProductVariantRepository variantRepository;
+    private final ProductPricingRepository pricingRepository;
 
     public List<ProductResponse> getAll() {
         return productRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
@@ -43,39 +45,28 @@ public class ProductService {
         product.setDescription(request.getDescription());
         product.setStatus(request.getStatus());
 
-        // Gán 3 trường giá gốc từ Request
         product.setBaseCostPrice(request.getBaseCostPrice());
         product.setBaseRetailPrice(request.getBaseRetailPrice());
         product.setBaseWholesalePrice(request.getBaseWholesalePrice());
 
-        // --- PHẦN SỬA LỖI ÉP KIỂU VÀ CHECK NULL ---
-
-        // Xử lý Category
+        // Xử lý Category, Supplier, Unit
         if (request.getCategoryId() != null) {
-            categoryRepository.findById(request.getCategoryId().longValue())
-                    .ifPresent(product::setCategory);
+            categoryRepository.findById(request.getCategoryId().longValue()).ifPresent(product::setCategory);
         }
-
-        // Xử lý Supplier
         if (request.getSupplierId() != null) {
-            supplierRepository.findById(Math.toIntExact(request.getSupplierId()))
-                    .ifPresent(product::setSupplier);
+            supplierRepository.findById(Math.toIntExact(request.getSupplierId())).ifPresent(product::setSupplier);
         }
-
-        // Xử lý Unit
         if (request.getUnitId() != null) {
-            unitRepository.findById(request.getUnitId())
-                    .ifPresent(product::setUnit);
+            unitRepository.findById(request.getUnitId()).ifPresent(product::setUnit);
         }
-        // ------------------------------------------
 
         Product savedProduct = productRepository.save(product);
 
-        // Xử lý biến thể (Variants)
+        // Xử lý tạo mới Biến thể (Variants)
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
             for (ProductRequest.VariantRequest vReq : request.getVariants()) {
                 VariantRequest serviceVariantReq = new VariantRequest();
-                serviceVariantReq.setProductId(Long.valueOf(savedProduct.getId())); // Dùng trực tiếp ID vì cùng kiểu Long
+                serviceVariantReq.setProductId(Long.valueOf(savedProduct.getId()));
                 serviceVariantReq.setSku(vReq.getSku());
                 serviceVariantReq.setBarcode(vReq.getBarcode());
                 serviceVariantReq.setQuantity(vReq.getQuantity());
@@ -93,9 +84,7 @@ public class ProductService {
             }
         }
 
-        // Đồng bộ Google Sheets
         syncToGoogleSheets(savedProduct, request.getVariants() != null ? request.getVariants().size() : 0, "Tạo mới");
-
         return mapToResponse(savedProduct);
     }
 
@@ -113,9 +102,15 @@ public class ProductService {
         product.setBaseRetailPrice(request.getBaseRetailPrice());
         product.setBaseWholesalePrice(request.getBaseWholesalePrice());
 
-        product.setCategory(categoryRepository.findById(Long.valueOf(request.getCategoryId().intValue())).orElseThrow());
-        product.setSupplier(supplierRepository.findById(request.getSupplierId().intValue()).orElseThrow());
-        product.setUnit(unitRepository.findById(request.getUnitId()).orElseThrow());
+        if (request.getCategoryId() != null) {
+            product.setCategory(categoryRepository.findById(Long.valueOf(request.getCategoryId().intValue())).orElseThrow());
+        }
+        if (request.getSupplierId() != null) {
+            product.setSupplier(supplierRepository.findById(request.getSupplierId().intValue()).orElseThrow());
+        }
+        if (request.getUnitId() != null) {
+            product.setUnit(unitRepository.findById(request.getUnitId()).orElseThrow());
+        }
 
         Product savedProduct = productRepository.save(product);
 
@@ -125,7 +120,7 @@ public class ProductService {
             variantService.deleteVariant(old.getId());
         }
 
-        // Tạo lại biến thể mới bằng DTO (FIX LỖI ARGUMENT)
+        // Tạo lại biến thể mới
         if (request.getVariants() != null) {
             for (ProductRequest.VariantRequest vReq : request.getVariants()) {
                 VariantRequest serviceVariantReq = new VariantRequest();
@@ -148,18 +143,32 @@ public class ProductService {
         }
 
         syncToGoogleSheets(savedProduct, request.getVariants() != null ? request.getVariants().size() : 0, "Cập nhật");
-
         return mapToResponse(savedProduct);
     }
 
     @Transactional
     public String delete(Long id) {
-        Product product = productRepository.findById(Long.valueOf(id.intValue())).orElseThrow();
+        Product product = productRepository.findById(Long.valueOf(id.intValue()))
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+
         String name = product.getName();
+
+        List<ProductVariant> variants = variantRepository.findByProductId(product.getId().longValue());
+
+        if (variants != null && !variants.isEmpty()) {
+            for (ProductVariant variant : variants) {
+                List<ProductPricing> pricings = pricingRepository.findByVariantId(variant.getId().longValue());
+                if (pricings != null && !pricings.isEmpty()) {
+                    pricingRepository.deleteAll(pricings);
+                }
+            }
+            variantRepository.deleteAll(variants);
+        }
+
         productRepository.delete(product);
+
         return "Đã xóa thành công sản phẩm: " + name;
     }
-
     private void syncToGoogleSheets(Product p, int variantCount, String actionType) {
         try {
             List<Object> rowData = Arrays.asList(
@@ -180,7 +189,6 @@ public class ProductService {
     }
 
     private ProductResponse mapToResponse(Product product) {
-        // LẤY BIẾN THỂ QUA SERVICE BIẾN THỂ ĐÃ MAP SẴN DTO XỊN
         List<VariantDetailResponse> variants = variantService.getVariantsByProductId(product.getId().longValue());
 
         List<ProductResponse.VariantResponse> variantDtos = variants.stream().map(v ->
