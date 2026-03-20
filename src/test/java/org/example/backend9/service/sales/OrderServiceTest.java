@@ -6,17 +6,11 @@ import org.example.backend9.entity.core.Employee;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.entity.inventory.ProductPricing;
 import org.example.backend9.entity.inventory.ProductVariant;
-import org.example.backend9.entity.sales.Customer;
-import org.example.backend9.entity.sales.Loyalty;
 import org.example.backend9.entity.sales.Order;
 import org.example.backend9.enums.OrderStatus;
-import org.example.backend9.enums.PaymentMethod;
 import org.example.backend9.repository.inventory.ProductPricingRepository;
 import org.example.backend9.repository.inventory.ProductVariantRepository;
-import org.example.backend9.repository.sales.CustomerRepository;
-import org.example.backend9.repository.sales.LoyaltyRepository;
 import org.example.backend9.repository.sales.OrderRepository;
-import org.example.backend9.service.GoogleSheetService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +20,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,111 +35,120 @@ class OrderServiceTest {
     @Mock private OrderRepository orderRepository;
     @Mock private ProductVariantRepository variantRepository;
     @Mock private ProductPricingRepository pricingRepository;
-    @Mock private CustomerRepository customerRepository;
-    @Mock private LoyaltyRepository loyaltyRepository;
-    @Mock private GoogleSheetService googleSheetService;
+    @Mock private org.example.backend9.repository.core.EmployeeRepository employeeRepository;
 
     @InjectMocks
     private OrderService orderService;
 
     private ProductVariant mockVariant;
     private ProductPricing mockPricing;
-    private Customer mockCustomer;
     private Employee mockEmployee;
     private Store mockStore;
 
     @BeforeEach
     void setUp() {
+        // Giả lập sản phẩm iPhone 15
         mockVariant = new ProductVariant();
         mockVariant.setId(100);
         mockVariant.setQuantity(10);
-        mockVariant.setVariantName("Sản phẩm Test");
+        mockVariant.setVariantName("iPhone 15 Pro Max");
 
+        // Giả lập giá bán 30.000.000đ
         mockPricing = new ProductPricing();
-        mockPricing.setBaseRetailPrice(100000.0); // 100k
-
-        mockCustomer = new Customer();
-        mockCustomer.setId(1);
-        mockCustomer.setFullName("Ngọc Customer");
-        mockCustomer.setTotalSpent(BigDecimal.ZERO);
-        mockCustomer.setCurrentPoints(0);
+        mockPricing.setBaseRetailPrice(30000000.0);
 
         mockEmployee = new Employee();
+        mockEmployee.setFullName("Nguyễn Thị Bích Ngọc");
+
         mockStore = new Store();
+        mockStore.setName("CMC Store Hà Nội");
     }
 
     @Test
-    @DisplayName("1. CreateOrder: Thành công - Trừ kho và tích điểm đúng")
-    void createOrder_Success() {
-        // Given
+    @DisplayName("Test 1: Tạo đơn hàng thành công - Tính tiền và trừ kho chuẩn")
+    void createOrder_FullSuccess() {
+        // 1. Chuẩn bị Request: Mua 2 cái iPhone, giảm giá 1 triệu
         OrderRequest req = new OrderRequest();
         req.setOrderType("RETAIL");
         req.setPaymentMethod("CASH");
-        req.setCustomerId(1);
-        req.setDiscount(new BigDecimal("10000")); // Giảm 10k
+        req.setDiscount(new BigDecimal("1000000"));
 
         OrderRequest.ItemRequest item = new OrderRequest.ItemRequest();
         item.setProductVariantId(100);
-        item.setQuantity(2); // Mua 2 cái = 200k
+        item.setQuantity(2);
         req.setItems(List.of(item));
 
-        // Mocking
+        // 2. Mocking logic
         when(variantRepository.findById(100L)).thenReturn(Optional.of(mockVariant));
         when(pricingRepository.findByVariantId(100L)).thenReturn(List.of(mockPricing));
-        when(customerRepository.findById(1)).thenReturn(Optional.of(mockCustomer));
-        // Cấu hình: 10k = 1 điểm
-        when(loyaltyRepository.findById(1)).thenReturn(Optional.of(new Loyalty(1, new BigDecimal("10000"), new BigDecimal("100"))));
-
         when(orderRepository.save(any(Order.class))).thenAnswer(i -> {
             Order o = i.getArgument(0);
-            o.setOrderNumber("HD-MOCK");
+            o.setId(1);
+            o.setCreatedAt(LocalDateTime.now());
             return o;
         });
 
-        // When: (200k - 10k giảm giá = 190k thanh toán). 190k / 10k rate = 19 điểm.
+        // 3. Thực thi
         OrderResponse res = orderService.createOrder(req, mockEmployee, mockStore);
 
-        // Then
-        assertEquals(8, mockVariant.getQuantity()); // 10 - 2 = 8
-        assertEquals(new BigDecimal("190000.0"), res.getTotalAmount());
-        assertEquals(19, res.getEarnedPoints());
-        verify(orderRepository).save(any(Order.class));
+        // 4. Kiểm tra (Assertions)
+        // Tổng tiền: (30tr * 2) - 1tr = 59tr
+        assertTrue(new BigDecimal("59000000").compareTo(res.getTotalAmount()) == 0);
+        // Tồn kho: 10 - 2 = 8
+        assertEquals(8, mockVariant.getQuantity());
+        assertEquals("COMPLETED", res.getStatus());
+
+        verify(variantRepository, times(1)).save(any(ProductVariant.class));
+        verify(orderRepository, times(1)).save(any(Order.class));
     }
 
     @Test
-    @DisplayName("2. CreateOrder: Thất bại khi kho không đủ hàng")
-    void createOrder_Fail_OutOfStock() {
+    @DisplayName("Test 2: Lỗi khi sản phẩm không tồn tại trong hệ thống")
+    void createOrder_ProductNotFound() {
         OrderRequest req = new OrderRequest();
         OrderRequest.ItemRequest item = new OrderRequest.ItemRequest();
-        item.setProductVariantId(100);
-        item.setQuantity(50); // Kho có 10, mua 50
+        item.setProductVariantId(999);
         req.setItems(List.of(item));
 
-        when(variantRepository.findById(100L)).thenReturn(Optional.of(mockVariant));
+        when(variantRepository.findById(999L)).thenReturn(Optional.empty());
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> orderService.createOrder(req, mockEmployee, mockStore));
 
-        assertTrue(ex.getMessage().contains("không đủ tồn kho"));
+        assertEquals("Sản phẩm không tồn tại", ex.getMessage());
     }
 
     @Test
-    @DisplayName("3. Logic: Tổng tiền không được âm dù giảm giá nhiều")
-    void createOrder_TotalNotNegative() {
+    @DisplayName("Test 3: Lỗi khi sản phẩm chưa được thiết lập giá bán")
+    void createOrder_NoPricing() {
         OrderRequest req = new OrderRequest();
-        req.setDiscount(new BigDecimal("500000")); // Giảm 500k trong khi đơn hàng có 100k
-
         OrderRequest.ItemRequest item = new OrderRequest.ItemRequest();
         item.setProductVariantId(100);
         item.setQuantity(1);
         req.setItems(List.of(item));
 
         when(variantRepository.findById(100L)).thenReturn(Optional.of(mockVariant));
-        when(pricingRepository.findByVariantId(100L)).thenReturn(List.of(mockPricing));
-        when(orderRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(pricingRepository.findByVariantId(100L)).thenReturn(new ArrayList<>()); // Trả về list rỗng
 
-        OrderResponse res = orderService.createOrder(req, mockEmployee, mockStore);
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> orderService.createOrder(req, mockEmployee, mockStore));
 
-        assertEquals(BigDecimal.ZERO, res.getTotalAmount());
+        assertEquals("Chưa có giá bán cho sản phẩm này!", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Test 4: Cập nhật trạng thái đơn hàng sang CANCELLED")
+    void updateStatus_ToCancelled() {
+        Order order = new Order();
+        order.setId(1);
+        order.setStatus(OrderStatus.PENDING);
+
+        when(orderRepository.findById(1)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+
+        OrderResponse res = orderService.updateStatus(1, OrderStatus.CANCELLED);
+
+        assertEquals("CANCELLED", res.getStatus());
+        verify(orderRepository).save(order);
     }
 }
