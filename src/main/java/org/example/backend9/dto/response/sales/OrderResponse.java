@@ -27,6 +27,7 @@ public class OrderResponse {
     private String storeName;
     private LocalDateTime createdAt;
     private List<OrderItemResponse> items;
+    private Integer earnedPoints;
 
     @Data
     @Builder

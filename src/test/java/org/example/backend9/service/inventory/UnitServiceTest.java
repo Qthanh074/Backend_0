@@ -88,7 +88,7 @@ class UnitServiceTest {
         when(unitRepository.existsByName("Hộp")).thenReturn(false);
         when(unitRepository.save(any(Unit.class))).thenReturn(mockUnit);
 
-        UnitResponse res = unitService.update(id, mockRequest);
+        UnitResponse res = unitService.update(Math.toIntExact(id), mockRequest);
 
         assertNotNull(res);
         verify(unitRepository).save(any(Unit.class));
@@ -101,7 +101,7 @@ class UnitServiceTest {
         when(unitRepository.findById(id)).thenReturn(Optional.of(mockUnit));
         when(unitRepository.existsByName("Hộp")).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> unitService.update(id, mockRequest));
+        assertThrows(RuntimeException.class, () -> unitService.update(Math.toIntExact(id), mockRequest));
     }
 
     @Test
@@ -110,7 +110,7 @@ class UnitServiceTest {
         Long id = 1L;
         when(unitRepository.findById(id)).thenReturn(Optional.of(mockUnit));
 
-        String result = unitService.delete(id);
+        String result = unitService.delete(Math.toIntExact(id));
 
         assertTrue(result.contains("Đã xóa thành công"));
         verify(unitRepository).delete(mockUnit);
@@ -122,6 +122,6 @@ class UnitServiceTest {
         Long id = 99L;
         when(unitRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> unitService.delete(id));
+        assertThrows(RuntimeException.class, () -> unitService.delete(Math.toIntExact(id)));
     }
 }
