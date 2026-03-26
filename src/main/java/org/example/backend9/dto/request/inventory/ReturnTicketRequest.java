@@ -7,10 +7,11 @@ import java.util.List;
 
 @Data
 public class ReturnTicketRequest {
-    private String returnType; // CUSTOMER_RETURN hoặc SUPPLIER_RETURN
+    private String returnType;
     private String originalDocCode;
-    private Integer customerId; // Dùng cho khách trả
-    private Integer supplierId; // Dùng cho trả NCC
+    private Integer customerId;
+    private Integer supplierId;
+    private Integer storeId;
     private String reason;
     private PaymentMethod paymentMethod;
     private Integer createdById;

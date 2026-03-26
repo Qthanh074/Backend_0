@@ -109,11 +109,21 @@ public class CashbookTransactionService {
         txReq.setCreatorId(request.getCreatorId());
 
         CashbookTransactionResponse savedTx = createTransaction(txReq);
+        double currentDebt = supplier.getDebt();
+        double payAmount = request.getAmount().doubleValue();
 
-        supplier.setDebt(supplier.getDebt() - request.getAmount().doubleValue());
+        if (currentDebt > 0) {
+            // Nếu nợ đang là số dương (ví dụ 500k), thì TRỪ đi
+            supplier.setDebt(currentDebt - payAmount);
+        } else {
+            // Nếu nợ đang lưu số âm (ví dụ -500k), thì CỘNG vào để nó về 0
+            supplier.setDebt(currentDebt + payAmount);
+        }
+
         supplierRepository.save(supplier);
-
         return savedTx;
+
+
     }
 
     private void syncToGoogleSheet(CashbookTransactionResponse res) {

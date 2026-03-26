@@ -102,19 +102,32 @@ public class ProductPricingService {
     }
 
     private ProductPricingResponse mapToResponse(ProductPricing p) {
+        String fullName = p.getProduct() != null ? p.getProduct().getName() : "";
+        if (p.getVariant() != null && p.getVariant().getVariantName() != null) {
+            fullName += " - " + p.getVariant().getVariantName();
+        }
+
         return ProductPricingResponse.builder()
                 .id(p.getId())
                 .productId(p.getProduct() != null ? p.getProduct().getId().longValue() : null)
-                .productName(p.getProduct() != null ? p.getProduct().getName() : "")
+                .productName(fullName) // Trả về tên đầy đủ kèm biến thể
                 .variantId(p.getVariant() != null ? p.getVariant().getId().longValue() : null)
                 .sku(p.getVariant() != null ? p.getVariant().getSku() : "")
-                .variantName(p.getVariant() != null ? p.getVariant().getVariantName() : "")
                 .storeId(p.getStore() != null ? p.getStore().getId() : null)
-                .storeName(p.getStore() != null ? p.getStore().getName() : "Hệ thống chung")
+                .storeName(p.getStore() != null ? p.getStore().getName() : "Tất cả chi nhánh")
                 .baseCostPrice(p.getBaseCostPrice())
                 .baseRetailPrice(p.getBaseRetailPrice())
                 .wholesalePrice(p.getWholesalePrice())
                 .status(p.getStatus())
                 .build();
+    }
+    public List<ProductPricingResponse> search(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return getAll();
+        }
+        return pricingRepository.searchPricing(query)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 }

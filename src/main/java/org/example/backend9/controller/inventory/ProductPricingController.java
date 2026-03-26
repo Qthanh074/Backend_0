@@ -59,4 +59,33 @@ public class ProductPricingController {
             return ResponseEntity.badRequest().body("Lỗi khi xóa bảng giá: " + e.getMessage());
         }
     }
+    // 🟢 1. API DUYỆT HÀNG LOẠT (Nút "Duyệt Giá Mới")
+    @PostMapping("/bulk-approve")
+    public ResponseEntity<?> bulkApprove(@RequestBody List<Integer> ids) {
+        try {
+            ids.forEach(pricingService::approvePrice);
+            return ResponseEntity.ok("Đã duyệt thành công " + ids.size() + " bảng giá");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi duyệt hàng loạt: " + e.getMessage());
+        }
+    }
+
+    // 🟢 2. API IMPORT EXCEL (Nút "Import Giá")
+    @PostMapping("/import")
+    public ResponseEntity<?> importPricings(@RequestBody List<ProductPricingRequest> requests) {
+        try {
+            // Hàm này bác có thể viết lặp qua list requests và gọi hàm setupPrice
+            requests.forEach(pricingService::setupPrice);
+            return ResponseEntity.ok("Import thành công " + requests.size() + " dòng");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Lỗi import: " + e.getMessage());
+        }
+    }
+
+    // 🟢 3. API TÌM KIẾM THEO TÊN/MÃ (Ô "Tìm mã hàng/Tên hàng...")
+    @GetMapping("/search")
+    public ResponseEntity<?> search(@RequestParam String query) {
+        // Bác có thể viết thêm logic filter trong Service
+        return ResponseEntity.ok(pricingService.search(query));
+    }
 }

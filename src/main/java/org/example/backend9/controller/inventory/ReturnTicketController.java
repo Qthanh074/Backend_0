@@ -11,55 +11,38 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/inventory/returns")
+// 🟢 ĐÃ ĐỔI ĐƯỜNG DẪN KHỚP 100% VỚI REACT 🟢
+@RequestMapping("/api/inventory/return-tickets")
 @RequiredArgsConstructor
 public class ReturnTicketController {
 
     private final ReturnTicketService returnService;
 
-    @GetMapping("/customer/get-all")
-    public ResponseEntity<ApiResponse<List<ReturnTicketResponse>>> getCustomerReturns() {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Thành công", returnService.getByReturnType("CUSTOMER_RETURN")));
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ReturnTicketResponse>>> getAll() {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Thành công", returnService.getAll()));
     }
 
-    @PostMapping("/customer/create")
-    public ResponseEntity<ApiResponse<ReturnTicketResponse>> createCustomerReturn(@RequestBody ReturnTicketRequest request) {
-        request.setReturnType("CUSTOMER_RETURN");
-        return ResponseEntity.ok(new ApiResponse<>(true, "Tạo phiếu khách trả thành công", returnService.create(request)));
+    // 🟢 BỔ SUNG API XEM CHI TIẾT (Tránh lỗi khi bấm icon Con mắt) 🟢
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ReturnTicketResponse>> getById(@PathVariable Integer id) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Thành công", returnService.getById(id)));
     }
 
-    @PutMapping("/customer/update/{id}")
-    public ResponseEntity<ApiResponse<ReturnTicketResponse>> updateCustomerReturn(@PathVariable Integer id, @RequestBody ReturnTicketRequest request) {
-        request.setReturnType("CUSTOMER_RETURN");
-        return ResponseEntity.ok(new ApiResponse<>(true, "Cập nhật phiếu khách trả thành công", returnService.update(id, request)));
+    @PostMapping
+    public ResponseEntity<ApiResponse<ReturnTicketResponse>> create(@RequestBody ReturnTicketRequest request) {
+        // Biến returnType (Khách trả hay Trả NCC) đã được React truyền sẵn trong request rồi!
+        return ResponseEntity.ok(new ApiResponse<>(true, "Tạo phiếu trả thành công", returnService.create(request)));
     }
 
-    @DeleteMapping("/customer/delete/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteCustomerReturn(@PathVariable Integer id) {
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ReturnTicketResponse>> update(@PathVariable Integer id, @RequestBody ReturnTicketRequest request) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Cập nhật phiếu thành công", returnService.update(id, request)));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Integer id) {
         returnService.delete(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Xóa phiếu khách trả thành công", null));
-    }
-
-    @GetMapping("/supplier/get-all")
-    public ResponseEntity<ApiResponse<List<ReturnTicketResponse>>> getSupplierReturns() {
-        return ResponseEntity.ok(new ApiResponse<>(true, "Thành công", returnService.getByReturnType("SUPPLIER_RETURN")));
-    }
-
-    @PostMapping("/supplier/create")
-    public ResponseEntity<ApiResponse<ReturnTicketResponse>> createSupplierReturn(@RequestBody ReturnTicketRequest request) {
-        request.setReturnType("SUPPLIER_RETURN");
-        return ResponseEntity.ok(new ApiResponse<>(true, "Tạo phiếu trả NCC thành công", returnService.create(request)));
-    }
-
-    @PutMapping("/supplier/update/{id}")
-    public ResponseEntity<ApiResponse<ReturnTicketResponse>> updateSupplierReturn(@PathVariable Integer id, @RequestBody ReturnTicketRequest request) {
-        request.setReturnType("SUPPLIER_RETURN");
-        return ResponseEntity.ok(new ApiResponse<>(true, "Cập nhật phiếu trả NCC thành công", returnService.update(id, request)));
-    }
-
-    @DeleteMapping("/supplier/delete/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteSupplierReturn(@PathVariable Integer id) {
-        returnService.delete(id);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Xóa phiếu trả NCC thành công", null));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Xóa phiếu trả thành công", null));
     }
 }

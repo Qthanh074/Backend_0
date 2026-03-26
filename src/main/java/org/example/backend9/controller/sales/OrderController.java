@@ -6,7 +6,8 @@ import org.example.backend9.dto.response.sales.OrderResponse;
 import org.example.backend9.entity.core.Employee;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.enums.OrderStatus;
-import org.example.backend9.repository.core.EmployeeRepository; // Nhớ thêm repo này
+import org.example.backend9.repository.core.EmployeeRepository;
+import org.example.backend9.repository.core.StoreRepository; // 🟢 THÊM IMPORT NÀY
 import org.example.backend9.service.sales.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,7 +16,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.example.backend9.dto.response.ApiResponse;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -25,6 +25,7 @@ public class OrderController {
 
     private final OrderService orderService;
     private final EmployeeRepository employeeRepository;
+    private final StoreRepository storeRepository; // 🟢 INJECT THÊM STORE REPOSITORY
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'CASHIER')")
@@ -36,7 +37,16 @@ public class OrderController {
         Employee employee = employeeRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại"));
 
-        Store store = employee.getStore();
+        // 🟢 SỬA LẠI LOGIC LẤY CỬA HÀNG 🟢
+        // Ưu tiên 1: Lấy từ màn hình POS Frontend truyền xuống
+        Store store = null;
+        if (request.getStoreId() != null) {
+            store = storeRepository.findById(request.getStoreId()).orElse(null);
+        }
+        // Ưu tiên 2: Nếu FE không gửi (đơn online), lấy cửa hàng mặc định của nhân viên
+        if (store == null) {
+            store = employee.getStore();
+        }
 
         return ResponseEntity.ok(orderService.createOrder(request, employee, store));
     }

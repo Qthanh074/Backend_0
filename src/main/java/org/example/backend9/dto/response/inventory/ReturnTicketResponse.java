@@ -21,7 +21,7 @@ public class ReturnTicketResponse {
     private String createdByName;
     private String status;
     private List<ReturnDetailResponse> details;
-
+    private String storeName;
     @Data
     @Builder
     public static class ReturnDetailResponse {

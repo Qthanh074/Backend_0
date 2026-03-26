@@ -12,9 +12,13 @@ public class OrderRequest {
     private String paymentMethod;   // VD: CASH, BANK_TRANSFER, MOMO
     private BigDecimal shippingFee; // Phí giao hàng (nếu có)
 
+    // 🟢 SỬA TẠI ĐÂY: Thêm storeId để hứng dữ liệu từ Frontend
+    private Integer storeId;
+
     // Danh sách sản phẩm khách mua
     private List<ItemRequest> items;
     private BigDecimal discount;
+
     @Data
     public static class ItemRequest {
         private Integer productVariantId; // ID của biến thể sản phẩm (Integer)
