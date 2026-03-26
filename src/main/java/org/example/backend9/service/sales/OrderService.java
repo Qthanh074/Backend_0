@@ -10,6 +10,7 @@ import org.example.backend9.enums.OrderStatus;
 import org.example.backend9.enums.PaymentMethod;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.sales.*;
+import org.example.backend9.repository.core.StoreRepository; // Import thêm StoreRepository
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class OrderService {
     private final ProductPricingRepository pricingRepository;
     private final CustomerRepository customerRepository;
     private final org.example.backend9.repository.core.EmployeeRepository employeeRepository;
+    private final StoreRepository storeRepository; // 🟢 THÊM REPOSITORY NÀY
 
     public List<OrderResponse> getOrdersByFilter(String channel, String status, String type) {
         return orderRepository.findAll().stream()
@@ -60,7 +62,23 @@ public class OrderService {
 
         order.setStatus("ONLINE".equals(order.getOrderType()) ? OrderStatus.PENDING : OrderStatus.COMPLETED);
         order.setEmployee(employee);
-        order.setStore(store);
+
+        // 🟢 FIX TẬN GỐC: Logic đảm bảo Store không bao giờ bị NULL
+        Store finalStore = store;
+        if (finalStore == null) {
+            // Giả sử request có getStoreId() (nếu Frontend có gửi)
+            if (request.getStoreId() != null) {
+                finalStore = storeRepository.findById(request.getStoreId())
+                        .orElseThrow(() -> new RuntimeException("Cửa hàng không hợp lệ"));
+            }
+            // Vớt cú chót: Nếu nhân viên thuộc cửa hàng nào thì gán luôn cho cửa hàng đó
+            else if (employee != null && employee.getStore() != null) {
+                finalStore = employee.getStore();
+            }
+        }
+        order.setStore(finalStore);
+        // -------------------------------------------------------------
+
         order.setCreatedAt(LocalDateTime.now());
         order.setOrderDetails(new ArrayList<>());
 
@@ -74,16 +92,14 @@ public class OrderService {
                 variant.setQuantity(variant.getQuantity() - itemReq.getQuantity());
                 variantRepository.save(variant);
 
-                // FIX LỖI 1: Tự động lấy giá bán từ Database thay vì từ itemReq (Bảo mật hơn)
-                ProductPricing pricing = pricingRepository.findByVariantId(variant.getId().longValue()).stream().findFirst()                        .orElseThrow(() -> new RuntimeException("Chưa có giá bán cho sản phẩm này!"));
+                ProductPricing pricing = pricingRepository.findByVariantId(variant.getId().longValue()).stream().findFirst()
+                        .orElseThrow(() -> new RuntimeException("Chưa có giá bán cho sản phẩm này!"));
                 BigDecimal unitPrice = BigDecimal.valueOf(pricing.getBaseRetailPrice());
 
                 OrderDetail detail = new OrderDetail();
                 detail.setOrder(order);
                 detail.setProductVariant(variant);
                 detail.setQuantity(itemReq.getQuantity());
-
-                // Gán giá vừa lấy từ DB vào đây
                 detail.setUnitPrice(unitPrice);
                 detail.setTotal(unitPrice.multiply(new BigDecimal(itemReq.getQuantity())));
 
@@ -99,6 +115,7 @@ public class OrderService {
         return mapToResponse(orderRepository.save(order));
     }
 
+    // Các hàm updateStatus và mapToResponse giữ nguyên...
     @Transactional
     public OrderResponse updateStatus(Integer id, OrderStatus newStatus) {
         Order order = orderRepository.findById(id)
@@ -124,7 +141,7 @@ public class OrderService {
                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ")
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : "-")
                 .employeeName(order.getEmployee() != null ? order.getEmployee().getFullName() : "-")
-                .storeName(order.getStore() != null ? order.getStore().getName() : "-")
+                .storeName(order.getStore() != null ? order.getStore().getName() : "-") // Dòng này sẽ lấy được tên nếu order có store
                 .createdAt(order.getCreatedAt())
                 .items(order.getOrderDetails() != null ? order.getOrderDetails().stream().map(d -> {
                     String pName = "Sản phẩm";

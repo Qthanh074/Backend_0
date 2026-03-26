@@ -7,6 +7,7 @@ import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.entity.inventory.*;
 import org.example.backend9.enums.TicketStatus;
 import org.example.backend9.repository.core.EmployeeRepository;
+import org.example.backend9.repository.core.StoreRepository; // 🟢 THÊM IMPORT STORE REPO
 import org.example.backend9.repository.core.SupplierRepository;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.sales.CustomerRepository;
@@ -28,6 +29,7 @@ public class ReturnTicketService {
     private final CustomerRepository customerRepository;
     private final SupplierRepository supplierRepository;
     private final EmployeeRepository employeeRepository;
+    private final StoreRepository storeRepository; // 🟢 THÊM REPOSITORY CỬA HÀNG
 
     public List<ReturnTicketResponse> getByReturnType(String type) {
         return ticketRepository.findByReturnType(type).stream()
@@ -109,6 +111,11 @@ public class ReturnTicketService {
             ticket.setSupplier(supplierRepository.findById(request.getSupplierId()).orElse(null));
         if (request.getCreatedById() != null)
             ticket.setCreatedBy(employeeRepository.findById(request.getCreatedById()).orElse(null));
+
+        // 🟢 LIÊN KẾT PHIẾU TRẢ VỚI CỬA HÀNG 🟢
+        if (request.getStoreId() != null) {
+            ticket.setStore(storeRepository.findById(request.getStoreId()).orElse(null));
+        }
     }
 
     private void processDetailsAndStock(ReturnTicket ticket, List<ReturnTicketRequest.ReturnDetailRequest> detailRequests, String type) {
@@ -180,6 +187,8 @@ public class ReturnTicketService {
                 .totalRefundAmount(t.getTotalRefundAmount())
                 .paymentMethod(t.getPaymentMethod() != null ? t.getPaymentMethod().name() : "")
                 .createdByName(t.getCreatedBy() != null ? t.getCreatedBy().getFullName() : "")
+                // 🟢 MAP TÊN CỬA HÀNG RA RESPONSE 🟢
+                .storeName(t.getStore() != null ? t.getStore().getName() : "")
                 .status(t.getStatus().name())
                 .details(details.stream().map(d -> ReturnTicketResponse.ReturnDetailResponse.builder()
                         .id(d.getId()).productVariantId(d.getProductVariant().getId().longValue())
@@ -188,5 +197,11 @@ public class ReturnTicketService {
                         .total(d.getReturnPrice().multiply(BigDecimal.valueOf(d.getReturnQuantity())))
                         .conditionNote(d.getConditionNote()).build()).collect(Collectors.toList()))
                 .build();
+    }
+    // 🟢 THÊM HÀM NÀY ĐỂ REACT CÓ THỂ LẤY TOÀN BỘ DANH SÁCH 🟢
+    public List<ReturnTicketResponse> getAll() {
+        return ticketRepository.findAll().stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 }

@@ -1,5 +1,6 @@
 package org.example.backend9.entity.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 import org.example.backend9.enums.EntityStatus;
@@ -7,6 +8,7 @@ import org.example.backend9.enums.EntityStatus;
 @Entity
 @Table(name = "employees")
 @Data @NoArgsConstructor @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Employee {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -148,10 +148,23 @@ public class TransferTicketService {
                 .fromStoreName(t.getFromStore().getName()).toStoreName(t.getToStore().getName())
                 .createdByName(t.getCreatedBy() != null ? t.getCreatedBy().getFullName() : "")
                 .totalQuantity(t.getTotalQuantity()).status(t.getStatus().name())
-                .details(details.stream().map(d -> TransferTicketResponse.TransferTicketDetailResponse.builder()
-                        .id(d.getId()).productVariantId(d.getProductVariant().getId().longValue())
-                        .sku(d.getProductVariant().getSku()).variantName(d.getProductVariant().getVariantName())
-                        .quantity(d.getQuantity()).build()).collect(Collectors.toList()))
+                .details(details.stream().map(d -> {
+                    // 🟢 ĐÂY RỒI BÁC! Xử lý ghép tên Sản phẩm + Phân loại cho đẹp 🟢
+                    String pName = d.getProductVariant().getProduct() != null ? d.getProductVariant().getProduct().getName() : "";
+                    String vName = d.getProductVariant().getVariantName() != null ? d.getProductVariant().getVariantName() : "";
+                    String fullName = pName;
+
+                    // Nếu có tên phân loại (như XL, L, Đỏ...) thì gạch ngang nối vào
+                    if (!vName.isEmpty() && !vName.equalsIgnoreCase("Default") && !vName.equalsIgnoreCase("Mặc định")) {
+                        fullName += " - " + vName;
+                    }
+
+                    return TransferTicketResponse.TransferTicketDetailResponse.builder()
+                            .id(d.getId()).productVariantId(d.getProductVariant().getId().longValue())
+                            .sku(d.getProductVariant().getSku())
+                            .variantName(fullName) // Gọi cái fullName vừa ghép ở trên nhét vào đây
+                            .quantity(d.getQuantity()).build();
+                }).collect(Collectors.toList()))
                 .build();
     }
 }

@@ -1,5 +1,6 @@
 package org.example.backend9.entity.sales;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.example.backend9.entity.core.Employee;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.enums.OrderStatus;
@@ -15,6 +16,7 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 @Data @NoArgsConstructor @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

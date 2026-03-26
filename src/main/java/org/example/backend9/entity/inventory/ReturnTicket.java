@@ -1,7 +1,7 @@
 package org.example.backend9.entity.inventory;
 
-
 import org.example.backend9.entity.core.Employee;
+import org.example.backend9.entity.core.Store; // 🟢 ĐÃ THÊM IMPORT STORE 🟢
 import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.entity.sales.Customer;
 import org.example.backend9.enums.PaymentMethod;
@@ -39,6 +39,11 @@ public class ReturnTicket {
     @JoinColumn(name = "supplier_id")
     private Supplier supplier;
 
+    // 🟢 ĐÃ THÊM TRƯỜNG CỬA HÀNG VÀO ĐÂY ĐỂ LƯU XUỐNG DB 🟢
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     private String reason; // Lý Do Trả
     private BigDecimal totalRefundAmount; // Tổng Hoàn Tiền / Tổng giá trị
 
@@ -53,4 +58,5 @@ public class ReturnTicket {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private TicketStatus status;
+
 }
