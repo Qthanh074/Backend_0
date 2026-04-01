@@ -2,7 +2,7 @@ package org.example.backend9.service.inventory;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend9.dto.request.inventory.ProductRequest;
-import org.example.backend9.dto.request.inventory.VariantRequest; // DTO dùng cho Service
+import org.example.backend9.dto.request.inventory.VariantRequest;
 import org.example.backend9.dto.response.inventory.ProductResponse;
 import org.example.backend9.dto.response.inventory.VariantDetailResponse;
 import org.example.backend9.entity.inventory.*;
@@ -26,8 +26,6 @@ public class ProductService {
     private final UnitRepository unitRepository;
     private final GoogleSheetService googleSheetService;
     private final ProductVariantService variantService;
-
-    // 👉 TIÊM THÊM 2 REPOSITORY NÀY ĐỂ XÓA TẬN GỐC LỖI KHÓA NGOẠI
     private final ProductVariantRepository variantRepository;
     private final ProductPricingRepository pricingRepository;
 
@@ -169,6 +167,7 @@ public class ProductService {
 
         return "Đã xóa thành công sản phẩm: " + name;
     }
+
     private void syncToGoogleSheets(Product p, int variantCount, String actionType) {
         try {
             List<Object> rowData = Arrays.asList(
@@ -197,6 +196,11 @@ public class ProductService {
                         .sku(v.getSku())
                         .variantName(v.getVariantName())
                         .barcode(v.getBarcode())
+
+                        // 👉 BỔ SUNG 2 DÒNG NÀY ĐỂ TRUYỀN ID VỀ FRONTEND
+                        .colorId(v.getColorId())
+                        .sizeId(v.getSizeId())
+
                         .colorName(v.getColorName())
                         .sizeName(v.getSizeName())
                         .unitName(v.getUnitName())

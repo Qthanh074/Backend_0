@@ -43,6 +43,8 @@ public class ProductResponse {
         private String colorName;
         private String sizeName;
         private String unitName;
+        private Integer colorId;
+        private Integer sizeId;
 
         // Giá cụ thể (từ bảng Pricing)
         private Double costPrice;
