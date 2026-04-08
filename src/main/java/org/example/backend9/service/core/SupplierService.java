@@ -5,6 +5,12 @@ import org.example.backend9.dto.response.core.SupplierResponse;
 import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.enums.EntityStatus;
 import org.example.backend9.repository.core.SupplierRepository;
+import org.example.backend9.repository.core.SupplierProductRepository;
+import org.example.backend9.repository.inventory.ProductVariantRepository;
+import org.example.backend9.entity.core.SupplierProduct;
+import org.example.backend9.entity.inventory.ProductVariant;
+import org.example.backend9.dto.request.core.SupplierProductRequest;
+import org.example.backend9.dto.response.core.SupplierProductResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,9 +20,15 @@ import java.util.stream.Collectors;
 @Service
 public class SupplierService {
     private final SupplierRepository supplierRepository;
+    private final SupplierProductRepository supplierProductRepository;
+    private final ProductVariantRepository productVariantRepository;
 
-    public SupplierService(SupplierRepository supplierRepository) {
+    public SupplierService(SupplierRepository supplierRepository,
+                           SupplierProductRepository supplierProductRepository,
+                           ProductVariantRepository productVariantRepository) {
         this.supplierRepository = supplierRepository;
+        this.supplierProductRepository = supplierProductRepository;
+        this.productVariantRepository = productVariantRepository;
     }
 
     private SupplierResponse mapToResponse(Supplier supplier) {
@@ -71,5 +83,41 @@ public class SupplierService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy nhà cung cấp"));
         supplier.setStatus(EntityStatus.INACTIVE);
         supplierRepository.save(supplier);
+    }
+
+    public List<SupplierProductResponse> getProductsBySupplier(Integer supplierId) {
+        return supplierProductRepository.findBySupplierId(supplierId).stream().map(sp -> {
+            ProductVariant v = sp.getProductVariant();
+            String cName = v.getColor() != null ? v.getColor().getName() : "";
+            String sName = v.getSize() != null ? v.getSize().getName() : "";
+            String attr = (cName + " " + sName).trim();
+            String pName = v.getProduct().getName();
+            String vName = attr.isEmpty() ? pName : pName + " (" + attr.replace(" ", " - ") + ")";
+
+            return SupplierProductResponse.builder()
+                    .variantId(v.getId())
+                    .sku(v.getSku())
+                    .variantName(vName)
+                    .costPrice(sp.getImportPrice())
+                    .quantity(v.getQuantity())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void configSupplierProducts(Integer supplierId, List<SupplierProductRequest> requests) {
+        Supplier supplier = supplierRepository.findById(supplierId).orElseThrow();
+        supplierProductRepository.deleteBySupplierId(supplierId); // Xóa cấu hình cũ
+
+        List<SupplierProduct> newConfigs = requests.stream().map(req -> {
+            ProductVariant v = productVariantRepository.findById(req.getVariantId().longValue()).orElseThrow();
+            SupplierProduct sp = new SupplierProduct();
+            sp.setSupplier(supplier);
+            sp.setProductVariant(v);
+            sp.setImportPrice(req.getImportPrice());
+            return sp;
+        }).collect(Collectors.toList());
+
+        supplierProductRepository.saveAll(newConfigs);
     }
 }

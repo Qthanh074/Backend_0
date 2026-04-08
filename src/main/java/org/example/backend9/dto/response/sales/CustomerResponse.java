@@ -20,9 +20,19 @@ public class CustomerResponse {
     private Integer currentPoints;
     private BigDecimal totalSpent;
     private Boolean canPlaceOrder;
+    private Integer areaId;
+    private String areaName;
+    private BigDecimal totalSpending;
+    private String rank;
 
-    // Hàm tiện ích map từ Entity sang DTO
     public static CustomerResponse fromEntity(Customer customer) {
+        String calculatedRank = "Đồng";
+        if (customer.getTotalSpending() != null) {
+            double spending = customer.getTotalSpending().doubleValue();
+            if (spending >= 10000000) calculatedRank = "Vàng";
+            else if (spending >= 2000000) calculatedRank = "Bạc";
+        }
+
         return CustomerResponse.builder()
                 .id(customer.getId())
                 .code(customer.getCode())
@@ -30,10 +40,10 @@ public class CustomerResponse {
                 .phone(customer.getPhone())
                 .email(customer.getEmail())
                 .address(customer.getAddress())
-                .tier(customer.getTier())
-                .currentPoints(customer.getCurrentPoints())
-                .totalSpent(customer.getTotalSpent())
                 .canPlaceOrder(customer.getCanPlaceOrder())
+                .totalSpending(customer.getTotalSpending())
+                .rank(calculatedRank) // 🟢 Gán hạng vừa tính được vào đây
+                .areaName(customer.getArea() != null ? customer.getArea().getName() : null)
                 .build();
     }
 }

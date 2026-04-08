@@ -2,6 +2,7 @@ package org.example.backend9.entity.inventory;
 
 
 import org.example.backend9.entity.core.Employee;
+import org.example.backend9.entity.core.Store;
 import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.enums.TicketStatus;
 import jakarta.persistence.*;
@@ -30,6 +31,10 @@ public class ImportTicket {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id")
     private Employee createdBy; // Người Lập
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
     private BigDecimal totalAmount; // Tổng Tiền
     private BigDecimal paidAmount; // Đã Trả

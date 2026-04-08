@@ -197,6 +197,8 @@ public class ProductService {
                         .sku(v.getSku())
                         .variantName(v.getVariantName())
                         .barcode(v.getBarcode())
+                        .colorId(v.getColorId())
+                        .sizeId(v.getSizeId())
                         .colorName(v.getColorName())
                         .sizeName(v.getSizeName())
                         .unitName(v.getUnitName())

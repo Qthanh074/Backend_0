@@ -1,6 +1,7 @@
 package org.example.backend9.enums;
 
 public enum DiscountType {
-    PERCENTAGE, // Giảm theo %
-    FIXED
+    FIXED,              // Số tiền cố định
+    PERCENTAGE_UNLIMIT, // % Không giới hạn
+    PERCENTAGE_CAPPED   // % Có giới hạn tối đa
 }

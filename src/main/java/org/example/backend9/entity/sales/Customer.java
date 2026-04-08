@@ -30,6 +30,9 @@ public class Customer {
     private String email;
     private String address;
 
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalSpending = BigDecimal.ZERO;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id")
     private Area area; // Thuộc khu vực nào

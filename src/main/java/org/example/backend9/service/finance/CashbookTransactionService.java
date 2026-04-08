@@ -7,6 +7,7 @@ import org.example.backend9.entity.core.Employee;
 import org.example.backend9.entity.core.Store;
 import org.example.backend9.entity.core.Supplier;
 import org.example.backend9.entity.finance.CashbookTransaction;
+import org.example.backend9.entity.inventory.ImportTicket;
 import org.example.backend9.enums.PaymentMethod;
 import org.example.backend9.enums.TicketStatus;
 import org.example.backend9.enums.TransactionType;
@@ -14,6 +15,7 @@ import org.example.backend9.repository.core.EmployeeRepository;
 import org.example.backend9.repository.core.StoreRepository;
 import org.example.backend9.repository.core.SupplierRepository;
 import org.example.backend9.repository.finance.CashbookTransactionRepository;
+import org.example.backend9.repository.inventory.ImportTicketRepository;
 import org.example.backend9.service.GoogleSheetService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,20 +35,23 @@ public class CashbookTransactionService {
     private final EmployeeRepository employeeRepository;
     private final SupplierRepository supplierRepository;
     private final GoogleSheetService googleSheetService;
+    // 🟢 THÊM REPOSITORY ĐỂ XỬ LÝ PHIẾU NHẬP
+    private final ImportTicketRepository importTicketRepository;
 
     public CashbookTransactionService(CashbookTransactionRepository cashbookRepository,
                                       StoreRepository storeRepository,
                                       EmployeeRepository employeeRepository,
                                       SupplierRepository supplierRepository,
-                                      GoogleSheetService googleSheetService) {
+                                      GoogleSheetService googleSheetService,
+                                      ImportTicketRepository importTicketRepository) { // 🟢 THÊM VÀO CONSTRUCTOR
         this.cashbookRepository = cashbookRepository;
         this.storeRepository = storeRepository;
         this.employeeRepository = employeeRepository;
         this.supplierRepository = supplierRepository;
         this.googleSheetService = googleSheetService;
+        this.importTicketRepository = importTicketRepository;
     }
 
-    // 👉 ĐÂY LÀ HÀM BẠN ĐANG THIẾU (Fix lỗi Cannot find symbol)
     public BigDecimal getCurrentBalance(PaymentMethod method) {
         return cashbookRepository.findTopByMethodOrderByTransactionDateDesc(method)
                 .map(CashbookTransaction::getBalanceAfterTransaction)
@@ -74,7 +79,6 @@ public class CashbookTransactionService {
         transaction.setCreator(creator);
         transaction.setStatus(TicketStatus.COMPLETED);
 
-        // 💡 Sửa logic: Lấy số dư cuối của ĐÚNG phương thức thanh toán này (Cash hoặc Bank)
         BigDecimal lastBalance = cashbookRepository.findTopByMethodOrderByTransactionDateDesc(request.getMethod())
                 .map(CashbookTransaction::getBalanceAfterTransaction)
                 .orElse(BigDecimal.ZERO);
@@ -109,21 +113,61 @@ public class CashbookTransactionService {
         txReq.setCreatorId(request.getCreatorId());
 
         CashbookTransactionResponse savedTx = createTransaction(txReq);
+
         double currentDebt = supplier.getDebt();
         double payAmount = request.getAmount().doubleValue();
 
         if (currentDebt > 0) {
-            // Nếu nợ đang là số dương (ví dụ 500k), thì TRỪ đi
             supplier.setDebt(currentDebt - payAmount);
         } else {
-            // Nếu nợ đang lưu số âm (ví dụ -500k), thì CỘNG vào để nó về 0
             supplier.setDebt(currentDebt + payAmount);
         }
-
         supplierRepository.save(supplier);
+
+        // 🟢 LOGIC THÔNG MINH: CHỌN CÁCH TRỪ NỢ
+        if (request.getImportTicketId() != null) {
+            // CÁCH 1: TRẢ ĐÍCH DANH CHO 1 PHIẾU (Khi bấm nút ở trang Nhập hàng)
+            ImportTicket ticket = importTicketRepository.findById(request.getImportTicketId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu nhập"));
+
+            BigDecimal remainingPayment = request.getAmount();
+            BigDecimal ticketDebt = ticket.getDebtAmount();
+
+            if (remainingPayment.compareTo(ticketDebt) >= 0) {
+                ticket.setPaidAmount(ticket.getPaidAmount().add(ticketDebt));
+                ticket.setDebtAmount(BigDecimal.ZERO);
+                ticket.setStatus(TicketStatus.COMPLETED);
+            } else {
+                ticket.setPaidAmount(ticket.getPaidAmount().add(remainingPayment));
+                ticket.setDebtAmount(ticket.getDebtAmount().subtract(remainingPayment));
+            }
+            importTicketRepository.save(ticket);
+
+        } else {
+            // CÁCH 2: TRỪ DẦN CUỐN CHIẾU (Khi bấm ở trang Công nợ chung)
+            BigDecimal remainingPayment = request.getAmount();
+            List<ImportTicket> unpaidTickets = importTicketRepository
+                    .findBySupplierIdAndStatusOrderByImportDateAsc(request.getSupplierId(), TicketStatus.DEBT);
+
+            for (ImportTicket ticket : unpaidTickets) {
+                if (remainingPayment.compareTo(BigDecimal.ZERO) <= 0) break;
+
+                BigDecimal ticketDebt = ticket.getDebtAmount();
+                if (remainingPayment.compareTo(ticketDebt) >= 0) {
+                    ticket.setPaidAmount(ticket.getPaidAmount().add(ticketDebt));
+                    ticket.setDebtAmount(BigDecimal.ZERO);
+                    ticket.setStatus(TicketStatus.COMPLETED);
+                    remainingPayment = remainingPayment.subtract(ticketDebt);
+                } else {
+                    ticket.setPaidAmount(ticket.getPaidAmount().add(remainingPayment));
+                    ticket.setDebtAmount(ticket.getDebtAmount().subtract(remainingPayment));
+                    remainingPayment = BigDecimal.ZERO;
+                }
+                importTicketRepository.save(ticket);
+            }
+        }
+
         return savedTx;
-
-
     }
 
     private void syncToGoogleSheet(CashbookTransactionResponse res) {
@@ -169,5 +213,4 @@ public class CashbookTransactionService {
         if (transaction.getCreator() != null) res.setCreatorName(transaction.getCreator().getFullName());
         return res;
     }
-
 }

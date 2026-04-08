@@ -70,7 +70,7 @@ class PromotionServiceTest {
     @DisplayName("2. Validate: Thành công với mã % và có chặn Max Discount")
     void validate_PercentageDiscount_WithMax_Success() {
         // Given: Giảm 10%, tối đa 20k
-        mockPromotion.setDiscountType(DiscountType.PERCENTAGE);
+        mockPromotion.setDiscountType(DiscountType.PERCENTAGE_UNLIMIT);
         mockPromotion.setDiscountValue(new BigDecimal("10"));
         mockPromotion.setMaxDiscount(new BigDecimal("20000"));
 
