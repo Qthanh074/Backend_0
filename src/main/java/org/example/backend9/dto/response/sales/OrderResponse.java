@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -28,6 +29,8 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private List<OrderItemResponse> items;
     private Integer earnedPoints;
+    private BigDecimal receivedAmount;
+    private BigDecimal changeAmount;
 
     @Data
     @Builder

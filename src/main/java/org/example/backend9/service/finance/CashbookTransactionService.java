@@ -21,10 +21,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,7 +37,6 @@ public class CashbookTransactionService {
     private final EmployeeRepository employeeRepository;
     private final SupplierRepository supplierRepository;
     private final GoogleSheetService googleSheetService;
-    // 🟢 THÊM REPOSITORY ĐỂ XỬ LÝ PHIẾU NHẬP
     private final ImportTicketRepository importTicketRepository;
 
     public CashbookTransactionService(CashbookTransactionRepository cashbookRepository,
@@ -43,7 +44,7 @@ public class CashbookTransactionService {
                                       EmployeeRepository employeeRepository,
                                       SupplierRepository supplierRepository,
                                       GoogleSheetService googleSheetService,
-                                      ImportTicketRepository importTicketRepository) { // 🟢 THÊM VÀO CONSTRUCTOR
+                                      ImportTicketRepository importTicketRepository) {
         this.cashbookRepository = cashbookRepository;
         this.storeRepository = storeRepository;
         this.employeeRepository = employeeRepository;
@@ -53,18 +54,31 @@ public class CashbookTransactionService {
     }
 
     public BigDecimal getCurrentBalance(PaymentMethod method) {
-        return cashbookRepository.findTopByMethodOrderByTransactionDateDesc(method)
+        return cashbookRepository.findTopByMethodOrderByIdDesc(method)
                 .map(CashbookTransaction::getBalanceAfterTransaction)
                 .orElse(BigDecimal.ZERO);
     }
 
     @Transactional
     public CashbookTransactionResponse createTransaction(CashbookTransactionRequest request) {
+        // 1. Kiểm tra tồn tại thực thể
         Store store = storeRepository.findById(request.getStoreId())
                 .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));
         Employee creator = employeeRepository.findById(request.getCreatorId())
                 .orElseThrow(() -> new RuntimeException("Nhân viên không tồn tại"));
 
+        // 2. 🟢 LOGIC KIỂM TRA SỐ DƯ (VALIDATION)
+        BigDecimal lastBalance = getCurrentBalance(request.getMethod());
+
+        if (request.getType() == TransactionType.EXPENSE) {
+            if (lastBalance.compareTo(request.getAmount()) < 0) {
+                String methodName = request.getMethod() == PaymentMethod.CASH ? "Tiền mặt" : "Tài khoản ngân hàng";
+                throw new RuntimeException("Số dư " + methodName + " không đủ để thực hiện chi! (Hiện có: "
+                        + formatCurrency(lastBalance) + ")");
+            }
+        }
+
+        // 3. Khởi tạo giao dịch
         CashbookTransaction transaction = new CashbookTransaction();
         String prefix = (request.getType() == TransactionType.INCOME ? "PT" : "PC");
         transaction.setCode(prefix + System.currentTimeMillis() % 1000000);
@@ -79,10 +93,7 @@ public class CashbookTransactionService {
         transaction.setCreator(creator);
         transaction.setStatus(TicketStatus.COMPLETED);
 
-        BigDecimal lastBalance = cashbookRepository.findTopByMethodOrderByTransactionDateDesc(request.getMethod())
-                .map(CashbookTransaction::getBalanceAfterTransaction)
-                .orElse(BigDecimal.ZERO);
-
+        // 4. Tính toán số dư mới
         BigDecimal newBalance = request.getType() == TransactionType.INCOME
                 ? lastBalance.add(request.getAmount())
                 : lastBalance.subtract(request.getAmount());
@@ -102,6 +113,7 @@ public class CashbookTransactionService {
         Supplier supplier = supplierRepository.findById(request.getSupplierId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Nhà cung cấp"));
 
+        // Chú ý: Hàm createTransaction bên trên sẽ tự động validate số dư quỹ khi hàm này gọi nó.
         CashbookTransactionRequest txReq = new CashbookTransactionRequest();
         txReq.setType(TransactionType.EXPENSE);
         txReq.setMethod(request.getMethod());
@@ -124,9 +136,8 @@ public class CashbookTransactionService {
         }
         supplierRepository.save(supplier);
 
-        // 🟢 LOGIC THÔNG MINH: CHỌN CÁCH TRỪ NỢ
+        // Logic trừ nợ phiếu nhập (Đích danh hoặc Cuốn chiếu)
         if (request.getImportTicketId() != null) {
-            // CÁCH 1: TRẢ ĐÍCH DANH CHO 1 PHIẾU (Khi bấm nút ở trang Nhập hàng)
             ImportTicket ticket = importTicketRepository.findById(request.getImportTicketId())
                     .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu nhập"));
 
@@ -142,16 +153,13 @@ public class CashbookTransactionService {
                 ticket.setDebtAmount(ticket.getDebtAmount().subtract(remainingPayment));
             }
             importTicketRepository.save(ticket);
-
         } else {
-            // CÁCH 2: TRỪ DẦN CUỐN CHIẾU (Khi bấm ở trang Công nợ chung)
             BigDecimal remainingPayment = request.getAmount();
             List<ImportTicket> unpaidTickets = importTicketRepository
                     .findBySupplierIdAndStatusOrderByImportDateAsc(request.getSupplierId(), TicketStatus.DEBT);
 
             for (ImportTicket ticket : unpaidTickets) {
                 if (remainingPayment.compareTo(BigDecimal.ZERO) <= 0) break;
-
                 BigDecimal ticketDebt = ticket.getDebtAmount();
                 if (remainingPayment.compareTo(ticketDebt) >= 0) {
                     ticket.setPaidAmount(ticket.getPaidAmount().add(ticketDebt));
@@ -166,9 +174,15 @@ public class CashbookTransactionService {
                 importTicketRepository.save(ticket);
             }
         }
-
         return savedTx;
     }
+
+    private String formatCurrency(BigDecimal amount) {
+        NumberFormat formatter = NumberFormat.getCurrencyInstance(new Locale("vi", "VN"));
+        return formatter.format(amount);
+    }
+
+    // ... (Các hàm syncToGoogleSheet, getTransactions, mapToResponse giữ nguyên) ...
 
     private void syncToGoogleSheet(CashbookTransactionResponse res) {
         try {

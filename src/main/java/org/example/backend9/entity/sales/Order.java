@@ -24,7 +24,8 @@ public class Order {
 
     @Column(unique = true, nullable = false)
     private String orderNumber; // Số HĐ (VD: HD260301, WEB001)
-
+    private BigDecimal receivedAmount = BigDecimal.ZERO; // Tiền khách đưa thực tế
+    private BigDecimal changeAmount = BigDecimal.ZERO;   // Tiền thối lại
     @Column(length = 20, nullable = false)
     private String orderType; // "RETAIL" (Bán lẻ tại quầy) hoặc "ONLINE" (TMĐT)
 

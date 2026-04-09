@@ -9,6 +9,7 @@ public class ImportTicketRequest {
     private Integer supplierId;
     private Integer createdById;
     private Integer storeId;
+    private String paymentMethod;
     private BigDecimal paidAmount; // Số tiền đã trả cho NCC ngay lúc nhập
 
     private List<ImportTicketDetailRequest> details;

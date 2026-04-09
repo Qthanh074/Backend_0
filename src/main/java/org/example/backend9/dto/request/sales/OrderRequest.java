@@ -13,6 +13,7 @@ public class OrderRequest {
     private BigDecimal shippingFee; // Phí giao hàng
     private Integer storeId;        // ID cửa hàng thực hiện đơn
     private BigDecimal discount;    // Số tiền giảm giá thủ công (nhân viên nhập thêm)
+    private BigDecimal receivedAmount;
 
     // 🟢 TIỀN KHÁCH ĐƯA: Để tính tiền thừa và sinh Phiếu Chi tự động
     private BigDecimal amountPaid;

@@ -14,14 +14,15 @@ import java.util.Optional;
 @Repository
 public interface CashbookTransactionRepository extends JpaRepository<CashbookTransaction, Integer> {
 
-    // Lấy giao dịch mới nhất của một Phương thức (CASH hoặc BANK_TRANSFER) để lấy số dư
+    Optional<CashbookTransaction> findTopByMethodOrderByIdDesc(PaymentMethod method);
+
     Optional<CashbookTransaction> findTopByMethodOrderByTransactionDateDesc(PaymentMethod method);
 
     @Query("SELECT c FROM CashbookTransaction c WHERE " +
             "(:type IS NULL OR c.type = :type) AND " +
             "(:method IS NULL OR c.method = :method) AND " +
             "(:search IS NULL OR c.code LIKE %:search% OR c.description LIKE %:search% OR c.referenceName LIKE %:search%) " +
-            "ORDER BY c.transactionDate DESC")
+            "ORDER BY c.id DESC")
     List<CashbookTransaction> filterTransactions(
             @Param("type") TransactionType type,
             @Param("method") PaymentMethod method,

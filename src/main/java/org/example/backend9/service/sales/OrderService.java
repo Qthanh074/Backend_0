@@ -125,6 +125,23 @@ public class OrderService {
         order.setDiscountAmount(manualDiscount.add(pointDiscount));
         order.setTotalAmount(subtotal.subtract(order.getDiscountAmount()));
 
+        // 🟢 CẬP NHẬT LOGIC LƯU SỐ TIỀN KHÁCH ĐƯA VÀO DATABASE
+        BigDecimal received = BigDecimal.ZERO;
+        // Quét các biến Frontend có thể gửi lên
+        if (request.getReceivedAmount() != null) {
+            received = request.getReceivedAmount();
+        } else if (request.getAmountPaid() != null) {
+            received = request.getAmountPaid();
+        } else {
+            received = order.getTotalAmount();
+        }
+
+        order.setReceivedAmount(received); // Lưu tiền khách đưa
+
+        // Tính tiền thừa (nếu khách đưa nhiều hơn tổng hóa đơn)
+        BigDecimal change = received.subtract(order.getTotalAmount());
+        order.setChangeAmount(change.compareTo(BigDecimal.ZERO) > 0 ? change : BigDecimal.ZERO);
+
         Order savedOrder = orderRepository.save(order);
 
         // Xử lý tài chính nếu hoàn tất ngay (POS)
@@ -167,17 +184,15 @@ public class OrderService {
             }
         }
 
-        // 2. Sinh Phiếu Thu (Số tiền THỰC TẾ khách đưa)
+        // 2. Sinh Phiếu Thu (Thu đúng bằng số tiền thực tế khách đưa đã lưu trong order)
         CashbookTransactionRequest receiptReq = new CashbookTransactionRequest();
         receiptReq.setType(TransactionType.INCOME);
         receiptReq.setCategory("101 Thu tiền bán hàng");
         receiptReq.setMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : PaymentMethod.CASH);
         receiptReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
 
-        // 🟢 SỬA LOGIC: Thu đủ số tiền khách đưa (amountPaid) thay vì chỉ thu giá trị đơn hàng
-        BigDecimal amountToCollect = (request != null && request.getAmountPaid() != null)
-                ? request.getAmountPaid()
-                : order.getTotalAmount();
+        // 🟢 SỬA LOGIC: Lấy thẳng tiền khách đưa từ Entity ra ghi sổ
+        BigDecimal amountToCollect = order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount();
         receiptReq.setAmount(amountToCollect);
 
         receiptReq.setDescription("Thu tiền đơn hàng " + order.getOrderNumber());
@@ -185,21 +200,20 @@ public class OrderService {
         if (order.getEmployee() != null) receiptReq.setCreatorId(order.getEmployee().getId());
         cashbookService.createTransaction(receiptReq);
 
-        // 3. Sinh Phiếu Chi tiền thừa (Để khấu trừ lại sổ quỹ)
-        if (request != null && order.getPaymentMethod() == PaymentMethod.CASH && request.getAmountPaid() != null) {
-            BigDecimal change = request.getAmountPaid().subtract(order.getTotalAmount());
-            if (change.compareTo(BigDecimal.ZERO) > 0) {
-                CashbookTransactionRequest expenseReq = new CashbookTransactionRequest();
-                expenseReq.setType(TransactionType.EXPENSE);
-                expenseReq.setCategory("700 Trả tiền thừa cho khách");
-                expenseReq.setMethod(PaymentMethod.CASH);
-                expenseReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
-                expenseReq.setAmount(change);
-                expenseReq.setDescription("Trả tiền thừa đơn " + order.getOrderNumber());
-                if (order.getStore() != null) expenseReq.setStoreId(order.getStore().getId());
-                if (order.getEmployee() != null) expenseReq.setCreatorId(order.getEmployee().getId());
-                cashbookService.createTransaction(expenseReq);
-            }
+        // 3. Sinh Phiếu Chi tiền thừa (Lấy thẳng từ Entity ra)
+        if (order.getPaymentMethod() == PaymentMethod.CASH && order.getChangeAmount() != null && order.getChangeAmount().compareTo(BigDecimal.ZERO) > 0) {
+            CashbookTransactionRequest expenseReq = new CashbookTransactionRequest();
+            expenseReq.setType(TransactionType.EXPENSE);
+            expenseReq.setCategory("700 Trả tiền thừa cho khách");
+            expenseReq.setMethod(PaymentMethod.CASH);
+            expenseReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
+
+            expenseReq.setAmount(order.getChangeAmount()); // 🟢 Xuất quỹ trả tiền thừa
+
+            expenseReq.setDescription("Trả tiền thừa đơn " + order.getOrderNumber());
+            if (order.getStore() != null) expenseReq.setStoreId(order.getStore().getId());
+            if (order.getEmployee() != null) expenseReq.setCreatorId(order.getEmployee().getId());
+            cashbookService.createTransaction(expenseReq);
         }
 
         // 4. Tích điểm mới và cập nhật chi tiêu (Chỉ dựa trên giá trị ĐƠN HÀNG, không tích trên tiền thừa)
@@ -219,6 +233,11 @@ public class OrderService {
                 .subTotal(order.getSubtotal())
                 .discount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
+
+                // 🟢 ĐẨY TIỀN KHÁCH ĐƯA VÀ TIỀN THỪA RA CHO FRONTEND HIỂN THỊ
+                .receivedAmount(order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount())
+                .changeAmount(order.getChangeAmount() != null ? order.getChangeAmount() : BigDecimal.ZERO)
+
                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ")
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : "-")
                 .employeeName(order.getEmployee() != null ? order.getEmployee().getFullName() : "-")
