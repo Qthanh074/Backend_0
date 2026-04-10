@@ -187,6 +187,13 @@ public class ProductService {
             System.err.println("Lỗi đồng bộ Google Sheets (Product): " + e.getMessage());
         }
     }
+    public List<ProductResponse> getBySupplierId(Long supplierId) {
+        // Sử dụng mapToResponse thay vì convertToResponse
+        return productRepository.findBySupplierId(supplierId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 
     private ProductResponse mapToResponse(Product product) {
         List<VariantDetailResponse> variants = variantService.getVariantsByProductId(product.getId().longValue());

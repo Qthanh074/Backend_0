@@ -13,17 +13,24 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/inventory/products")
 @RequiredArgsConstructor
-// Áp dụng bảo mật cho toàn bộ Controller
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 public class ProductController {
 
     private final ProductService productService;
 
+    // 🟢 CHỈ GIỮ LẠI MỘT HÀM GET DUY NHẤT Ở ĐÂY
     @GetMapping
-    public ResponseEntity<?> getAll() {
+    public ResponseEntity<?> getAll(@RequestParam(required = false) Long supplierId) {
         try {
-            // Trả về danh sách sản phẩm kèm theo tất cả các biến thể và giá
-            List<ProductResponse> products = productService.getAll();
+            List<ProductResponse> products;
+
+            // Nếu truyền ?supplierId=... thì lọc, không thì lấy tất cả
+            if (supplierId != null) {
+                products = productService.getBySupplierId(supplierId);
+            } else {
+                products = productService.getAll();
+            }
+
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi lấy danh sách sản phẩm: " + e.getMessage());
@@ -33,11 +40,9 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<?> create(@RequestBody ProductRequest request) {
         try {
-            // Xử lý tạo sản phẩm, tự động gọi Service Variant để lưu biến thể
             ProductResponse response = productService.create(request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            // Trả về lỗi cụ thể (VD: Trùng mã sản phẩm, trùng SKU biến thể)
             return ResponseEntity.badRequest().body("Lỗi tạo sản phẩm: " + e.getMessage());
         }
     }
@@ -45,7 +50,6 @@ public class ProductController {
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody ProductRequest request) {
         try {
-            // Cập nhật thông tin chung và đồng bộ lại danh sách biến thể thông qua Service
             ProductResponse response = productService.update(id, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -59,7 +63,7 @@ public class ProductController {
             String message = productService.delete(id);
             return ResponseEntity.ok(message);
         } catch (DataIntegrityViolationException e) {
-            return ResponseEntity.badRequest().body("KHÔNG THỂ XÓA! Sản phẩm này đã phát sinh giao dịch (nằm trong đơn hàng hoặc phiếu nhập). Vui lòng dùng chức năng Cập nhật và chuyển trạng thái sang 'Ngừng bán'.");
+            return ResponseEntity.badRequest().body("KHÔNG THỂ XÓA! Sản phẩm đã có giao dịch.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi khi xóa: " + e.getMessage());
         }

@@ -91,7 +91,6 @@ public class OrderService {
                 ProductVariant variant = variantRepository.findById(itemReq.getProductVariantId().longValue())
                         .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại"));
 
-                // Trừ kho
                 variant.setQuantity(variant.getQuantity() - itemReq.getQuantity());
                 variantRepository.save(variant);
 
@@ -113,21 +112,17 @@ public class OrderService {
 
         order.setSubtotal(subtotal);
 
-        // --- LOGIC GIẢM GIÁ VÀ TIÊU ĐIỂM ---
         BigDecimal manualDiscount = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
         BigDecimal pointDiscount = BigDecimal.ZERO;
 
         if (request.getUsedPoints() != null && request.getUsedPoints() > 0 && order.getCustomer() != null) {
-            // 1 điểm = 100 VNĐ
             pointDiscount = new BigDecimal(request.getUsedPoints()).multiply(new BigDecimal("100"));
         }
 
         order.setDiscountAmount(manualDiscount.add(pointDiscount));
         order.setTotalAmount(subtotal.subtract(order.getDiscountAmount()));
 
-        // 🟢 CẬP NHẬT LOGIC LƯU SỐ TIỀN KHÁCH ĐƯA VÀO DATABASE
         BigDecimal received = BigDecimal.ZERO;
-        // Quét các biến Frontend có thể gửi lên
         if (request.getReceivedAmount() != null) {
             received = request.getReceivedAmount();
         } else if (request.getAmountPaid() != null) {
@@ -136,15 +131,13 @@ public class OrderService {
             received = order.getTotalAmount();
         }
 
-        order.setReceivedAmount(received); // Lưu tiền khách đưa
+        order.setReceivedAmount(received);
 
-        // Tính tiền thừa (nếu khách đưa nhiều hơn tổng hóa đơn)
         BigDecimal change = received.subtract(order.getTotalAmount());
         order.setChangeAmount(change.compareTo(BigDecimal.ZERO) > 0 ? change : BigDecimal.ZERO);
 
         Order savedOrder = orderRepository.save(order);
 
-        // Xử lý tài chính nếu hoàn tất ngay (POS)
         if (savedOrder.getStatus() == OrderStatus.COMPLETED) {
             handleFinancialAndLoyalty(savedOrder, request);
         }
@@ -174,7 +167,7 @@ public class OrderService {
     }
 
     private void handleFinancialAndLoyalty(Order order, OrderRequest request) {
-        // 1. Khấu trừ điểm đã tiêu (Redeem)
+        // 1. Khấu trừ điểm đã tiêu
         if (request != null && request.getUsedPoints() != null && request.getUsedPoints() > 0) {
             Customer customer = order.getCustomer();
             if (customer != null) {
@@ -184,14 +177,13 @@ public class OrderService {
             }
         }
 
-        // 2. Sinh Phiếu Thu (Thu đúng bằng số tiền thực tế khách đưa đã lưu trong order)
+        // 2. Sinh Phiếu Thu
         CashbookTransactionRequest receiptReq = new CashbookTransactionRequest();
         receiptReq.setType(TransactionType.INCOME);
         receiptReq.setCategory("101 Thu tiền bán hàng");
         receiptReq.setMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : PaymentMethod.CASH);
         receiptReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
 
-        // 🟢 SỬA LOGIC: Lấy thẳng tiền khách đưa từ Entity ra ghi sổ
         BigDecimal amountToCollect = order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount();
         receiptReq.setAmount(amountToCollect);
 
@@ -200,15 +192,14 @@ public class OrderService {
         if (order.getEmployee() != null) receiptReq.setCreatorId(order.getEmployee().getId());
         cashbookService.createTransaction(receiptReq);
 
-        // 3. Sinh Phiếu Chi tiền thừa (Lấy thẳng từ Entity ra)
+        // 3. Sinh Phiếu Chi tiền thừa
         if (order.getPaymentMethod() == PaymentMethod.CASH && order.getChangeAmount() != null && order.getChangeAmount().compareTo(BigDecimal.ZERO) > 0) {
             CashbookTransactionRequest expenseReq = new CashbookTransactionRequest();
             expenseReq.setType(TransactionType.EXPENSE);
             expenseReq.setCategory("700 Trả tiền thừa cho khách");
             expenseReq.setMethod(PaymentMethod.CASH);
             expenseReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
-
-            expenseReq.setAmount(order.getChangeAmount()); // 🟢 Xuất quỹ trả tiền thừa
+            expenseReq.setAmount(order.getChangeAmount());
 
             expenseReq.setDescription("Trả tiền thừa đơn " + order.getOrderNumber());
             if (order.getStore() != null) expenseReq.setStoreId(order.getStore().getId());
@@ -216,9 +207,20 @@ public class OrderService {
             cashbookService.createTransaction(expenseReq);
         }
 
-        // 4. Tích điểm mới và cập nhật chi tiêu (Chỉ dựa trên giá trị ĐƠN HÀNG, không tích trên tiền thừa)
-        if (order.getCustomer() != null) {
-            loyaltyService.processPointsForOrder(order.getCustomer(), order.getTotalAmount());
+        // 4. Tích điểm mới và cập nhật chi tiêu thực tế
+        if (order.getCustomer() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
+            try {
+                // Tích điểm qua LoyaltyService
+                loyaltyService.processPointsForOrder(order.getCustomer(), order.getTotalAmount());
+
+                // Cập nhật tổng chi tiêu (totalSpend) vào Entity Customer
+                Customer customer = order.getCustomer();
+                BigDecimal currentTotal = customer.getTotalSpend() != null ? customer.getTotalSpend() : BigDecimal.ZERO;
+                customer.setTotalSpend(currentTotal.add(order.getTotalAmount()));
+                customerRepository.save(customer);
+            } catch (Exception e) {
+                System.err.println("Lỗi tích điểm/chi tiêu: " + e.getMessage());
+            }
         }
     }
 
@@ -233,11 +235,8 @@ public class OrderService {
                 .subTotal(order.getSubtotal())
                 .discount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
-
-                // 🟢 ĐẨY TIỀN KHÁCH ĐƯA VÀ TIỀN THỪA RA CHO FRONTEND HIỂN THỊ
                 .receivedAmount(order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount())
                 .changeAmount(order.getChangeAmount() != null ? order.getChangeAmount() : BigDecimal.ZERO)
-
                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ")
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : "-")
                 .employeeName(order.getEmployee() != null ? order.getEmployee().getFullName() : "-")

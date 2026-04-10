@@ -33,6 +33,12 @@ public class Customer {
     @Column(precision = 19, scale = 2)
     private BigDecimal totalSpending = BigDecimal.ZERO;
 
+    @Column(precision = 19, scale = 2)
+    private BigDecimal totalSpend = BigDecimal.ZERO;
+
+    // Trường để hiện "Điểm hiện có"
+    private Integer currentPoints = 0;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "area_id")
     private Area area; // Thuộc khu vực nào
@@ -41,8 +47,6 @@ public class Customer {
     @Column(length = 20, columnDefinition = "VARCHAR(20)") // Thêm cái này
     private CustomerTier tier = CustomerTier.BRONZE;
 
-    // LIÊN QUAN TỚI TÍCH ĐIỂM (Loyalty)
-    private Integer currentPoints = 0; // Điểm tích lũy hiện tại
     private BigDecimal totalSpent = BigDecimal.ZERO; // Tổng chi tiêu
     private LocalDate lastVisit; // Lần cuối ghé mua
 
