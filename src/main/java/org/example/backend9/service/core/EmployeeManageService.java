@@ -1,6 +1,6 @@
 package org.example.backend9.service.core;
 
-import org.example.backend9.dto.request.core.EmployeeCreateRequest; // Nhớ tạo file DTO này
+import org.example.backend9.dto.request.core.EmployeeCreateRequest;
 import org.example.backend9.dto.request.core.EmployeeUpdateRequest;
 import org.example.backend9.dto.response.core.EmployeeResponse;
 import org.example.backend9.entity.core.Employee;
@@ -8,7 +8,7 @@ import org.example.backend9.entity.core.Store;
 import org.example.backend9.enums.EntityStatus;
 import org.example.backend9.repository.core.EmployeeRepository;
 import org.example.backend9.repository.core.StoreRepository;
-import org.springframework.security.crypto.password.PasswordEncoder; // Để mã hóa mật khẩu
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +30,6 @@ public class EmployeeManageService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Map từ Entity sang Response DTO
     private EmployeeResponse mapToResponse(Employee emp) {
         EmployeeResponse res = new EmployeeResponse();
         res.setId(emp.getId());
@@ -64,7 +63,6 @@ public class EmployeeManageService {
         emp.setPhone(request.getPhone());
         emp.setRole(request.getRole());
 
-        // 🔑 Quan trọng: Mã hóa mật khẩu trước khi lưu
         emp.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
         emp.setStatus(EntityStatus.ACTIVE);
@@ -87,17 +85,14 @@ public class EmployeeManageService {
         emp.setPhone(request.getPhone());
         emp.setRole(request.getRole());
 
-        // 👉 CẬP NHẬT TRẠNG THÁI TẠI ĐÂY
         if (request.getIsActive() != null) {
             emp.setStatus(request.getIsActive() ? EntityStatus.ACTIVE : EntityStatus.INACTIVE);
         }
 
-        // Cập nhật mật khẩu nếu có nhập mới
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             emp.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
 
-        // Xử lý Store (giữ nguyên code cũ của bạn)
         if (request.getStoreId() != null) {
             Store store = storeRepository.findById(request.getStoreId())
                     .orElseThrow(() -> new RuntimeException("Cửa hàng không tồn tại"));

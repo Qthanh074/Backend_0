@@ -8,6 +8,8 @@ import org.example.backend9.service.core.SupplierService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.example.backend9.dto.request.core.SupplierProductRequest;
+import org.example.backend9.dto.response.core.SupplierProductResponse;
 
 import java.util.List;
 
@@ -70,5 +72,15 @@ public class SupplierController {
                         "Đã khóa nhà cung cấp thành công",
                         null)
         );
+    }
+    @GetMapping("/{id}/products")
+    public ResponseEntity<ApiResponse<List<SupplierProductResponse>>> getSupplierProducts(@PathVariable Integer id) {
+        return ResponseEntity.ok(new ApiResponse<>(true, "Thành công", supplierService.getProductsBySupplier(id)));
+    }
+
+    @PostMapping("/{id}/products")
+    public ResponseEntity<ApiResponse<Void>> configSupplierProducts(@PathVariable Integer id, @RequestBody List<SupplierProductRequest> requests) {
+        supplierService.configSupplierProducts(id, requests);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Cấu hình báo giá thành công", null));
     }
 }

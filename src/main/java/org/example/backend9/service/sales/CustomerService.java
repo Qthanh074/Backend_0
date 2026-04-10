@@ -8,6 +8,7 @@ import org.example.backend9.repository.sales.CustomerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,9 +21,27 @@ public class CustomerService {
         this.customerRepository = customerRepository;
     }
 
+
+    private String calculateRank(BigDecimal totalSpending) {
+        if (totalSpending == null) return "Đồng";
+        double spending = totalSpending.doubleValue();
+
+        if (spending >= 10000000) return "Vàng";
+        if (spending >= 2000000)  return "Bạc";
+        return "Đồng";
+    }
+
+    // Hàm hỗ trợ chuyển đổi Entity sang Response và áp dụng Rank đồng bộ
+    private CustomerResponse convertToResponse(Customer customer) {
+        CustomerResponse response = CustomerResponse.fromEntity(customer);
+        // Ép hạng thẻ phải theo đúng logic tính toán ở Backend
+        response.setRank(calculateRank(customer.getTotalSpending()));
+        return response;
+    }
+
     public List<CustomerResponse> getAllCustomers() {
         return customerRepository.findAll().stream()
-                .map(CustomerResponse::fromEntity)
+                .map(this::convertToResponse) // Sử dụng hàm convert đã đồng bộ rank
                 .collect(Collectors.toList());
     }
 
@@ -42,6 +61,7 @@ public class CustomerService {
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
         customer.setCanPlaceOrder(request.getCanPlaceOrder() != null ? request.getCanPlaceOrder() : true);
+        customer.setTotalSpending(BigDecimal.ZERO); // Mặc định chi tiêu = 0 khi mới tạo
 
         if (request.getAreaId() != null) {
             Area area = new Area();
@@ -49,7 +69,7 @@ public class CustomerService {
             customer.setArea(area);
         }
 
-        return CustomerResponse.fromEntity(customerRepository.save(customer));
+        return convertToResponse(customerRepository.save(customer));
     }
 
     @Transactional
@@ -71,7 +91,7 @@ public class CustomerService {
         customer.setAddress(request.getAddress());
         if (request.getCanPlaceOrder() != null) customer.setCanPlaceOrder(request.getCanPlaceOrder());
 
-        return CustomerResponse.fromEntity(customerRepository.save(customer));
+        return convertToResponse(customerRepository.save(customer));
     }
 
     @Transactional
@@ -79,8 +99,8 @@ public class CustomerService {
         if (!customerRepository.existsById(id)) throw new RuntimeException("Không tìm thấy khách hàng");
         customerRepository.deleteById(id);
     }
+
     public List<CustomerResponse> getLoyaltyMembers(String search) {
-        // Nếu có search thì tìm theo tên hoặc số điện thoại, không thì lấy hết
         List<Customer> customers;
         if (search != null && !search.isEmpty()) {
             customers = customerRepository.findByFullNameContainingOrPhoneContaining(search, search);
@@ -89,7 +109,7 @@ public class CustomerService {
         }
 
         return customers.stream()
-                .map(CustomerResponse::fromEntity) // Chuyển sang DTO để trả về
+                .map(this::convertToResponse) // 🟢 Đồng bộ hạng thẻ tại đây
                 .collect(Collectors.toList());
     }
 }

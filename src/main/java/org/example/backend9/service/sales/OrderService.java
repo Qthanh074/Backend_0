@@ -3,6 +3,8 @@ package org.example.backend9.service.sales;
 import lombok.RequiredArgsConstructor;
 import org.example.backend9.dto.request.sales.OrderRequest;
 import org.example.backend9.dto.response.sales.OrderResponse;
+import org.example.backend9.dto.request.finance.CashbookTransactionRequest;
+import org.example.backend9.enums.TransactionType;
 import org.example.backend9.entity.inventory.*;
 import org.example.backend9.entity.sales.*;
 import org.example.backend9.entity.core.*;
@@ -10,7 +12,8 @@ import org.example.backend9.enums.OrderStatus;
 import org.example.backend9.enums.PaymentMethod;
 import org.example.backend9.repository.inventory.*;
 import org.example.backend9.repository.sales.*;
-import org.example.backend9.repository.core.StoreRepository; // Import thêm StoreRepository
+import org.example.backend9.repository.core.StoreRepository;
+import org.example.backend9.service.finance.CashbookTransactionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,8 +31,9 @@ public class OrderService {
     private final ProductVariantRepository variantRepository;
     private final ProductPricingRepository pricingRepository;
     private final CustomerRepository customerRepository;
-    private final org.example.backend9.repository.core.EmployeeRepository employeeRepository;
-    private final StoreRepository storeRepository; // 🟢 THÊM REPOSITORY NÀY
+    private final StoreRepository storeRepository;
+    private final CashbookTransactionService cashbookService;
+    private final LoyaltyService loyaltyService;
 
     public List<OrderResponse> getOrdersByFilter(String channel, String status, String type) {
         return orderRepository.findAll().stream()
@@ -63,22 +67,20 @@ public class OrderService {
         order.setStatus("ONLINE".equals(order.getOrderType()) ? OrderStatus.PENDING : OrderStatus.COMPLETED);
         order.setEmployee(employee);
 
-        // 🟢 FIX TẬN GỐC: Logic đảm bảo Store không bao giờ bị NULL
+        if (request.getCustomerId() != null) {
+            customerRepository.findById(request.getCustomerId()).ifPresent(order::setCustomer);
+        }
+
         Store finalStore = store;
         if (finalStore == null) {
-            // Giả sử request có getStoreId() (nếu Frontend có gửi)
             if (request.getStoreId() != null) {
                 finalStore = storeRepository.findById(request.getStoreId())
                         .orElseThrow(() -> new RuntimeException("Cửa hàng không hợp lệ"));
-            }
-            // Vớt cú chót: Nếu nhân viên thuộc cửa hàng nào thì gán luôn cho cửa hàng đó
-            else if (employee != null && employee.getStore() != null) {
+            } else if (employee != null && employee.getStore() != null) {
                 finalStore = employee.getStore();
             }
         }
         order.setStore(finalStore);
-        // -------------------------------------------------------------
-
         order.setCreatedAt(LocalDateTime.now());
         order.setOrderDetails(new ArrayList<>());
 
@@ -93,7 +95,7 @@ public class OrderService {
                 variantRepository.save(variant);
 
                 ProductPricing pricing = pricingRepository.findByVariantId(variant.getId().longValue()).stream().findFirst()
-                        .orElseThrow(() -> new RuntimeException("Chưa có giá bán cho sản phẩm này!"));
+                        .orElseThrow(() -> new RuntimeException("Chưa có giá bán!"));
                 BigDecimal unitPrice = BigDecimal.valueOf(pricing.getBaseRetailPrice());
 
                 OrderDetail detail = new OrderDetail();
@@ -109,22 +111,117 @@ public class OrderService {
         }
 
         order.setSubtotal(subtotal);
-        order.setDiscountAmount(request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO);
+
+        BigDecimal manualDiscount = request.getDiscount() != null ? request.getDiscount() : BigDecimal.ZERO;
+        BigDecimal pointDiscount = BigDecimal.ZERO;
+
+        if (request.getUsedPoints() != null && request.getUsedPoints() > 0 && order.getCustomer() != null) {
+            pointDiscount = new BigDecimal(request.getUsedPoints()).multiply(new BigDecimal("100"));
+        }
+
+        order.setDiscountAmount(manualDiscount.add(pointDiscount));
         order.setTotalAmount(subtotal.subtract(order.getDiscountAmount()));
 
-        return mapToResponse(orderRepository.save(order));
+        BigDecimal received = BigDecimal.ZERO;
+        if (request.getReceivedAmount() != null) {
+            received = request.getReceivedAmount();
+        } else if (request.getAmountPaid() != null) {
+            received = request.getAmountPaid();
+        } else {
+            received = order.getTotalAmount();
+        }
+
+        order.setReceivedAmount(received);
+
+        BigDecimal change = received.subtract(order.getTotalAmount());
+        order.setChangeAmount(change.compareTo(BigDecimal.ZERO) > 0 ? change : BigDecimal.ZERO);
+
+        Order savedOrder = orderRepository.save(order);
+
+        if (savedOrder.getStatus() == OrderStatus.COMPLETED) {
+            handleFinancialAndLoyalty(savedOrder, request);
+        }
+
+        return mapToResponse(savedOrder);
     }
 
-    // Các hàm updateStatus và mapToResponse giữ nguyên...
     @Transactional
     public OrderResponse updateStatus(Integer id, OrderStatus newStatus) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng ID: " + id));
-        order.setStatus(newStatus);
-        if (newStatus == OrderStatus.CANCELLED) {
-            order.setCancelledAt(LocalDateTime.now());
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng"));
+
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            throw new RuntimeException("Đơn hàng đã hoàn tất, không thể sửa.");
         }
-        return mapToResponse(orderRepository.save(order));
+
+        order.setStatus(newStatus);
+        if (newStatus == OrderStatus.CANCELLED) order.setCancelledAt(LocalDateTime.now());
+
+        Order savedOrder = orderRepository.save(order);
+
+        if (newStatus == OrderStatus.COMPLETED) {
+            handleFinancialAndLoyalty(savedOrder, null);
+        }
+
+        return mapToResponse(savedOrder);
+    }
+
+    private void handleFinancialAndLoyalty(Order order, OrderRequest request) {
+        // 1. Khấu trừ điểm đã tiêu
+        if (request != null && request.getUsedPoints() != null && request.getUsedPoints() > 0) {
+            Customer customer = order.getCustomer();
+            if (customer != null) {
+                int currentPoints = (customer.getCurrentPoints() == null) ? 0 : customer.getCurrentPoints();
+                customer.setCurrentPoints(currentPoints - request.getUsedPoints());
+                customerRepository.save(customer);
+            }
+        }
+
+        // 2. Sinh Phiếu Thu
+        CashbookTransactionRequest receiptReq = new CashbookTransactionRequest();
+        receiptReq.setType(TransactionType.INCOME);
+        receiptReq.setCategory("101 Thu tiền bán hàng");
+        receiptReq.setMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : PaymentMethod.CASH);
+        receiptReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
+
+        BigDecimal amountToCollect = order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount();
+        receiptReq.setAmount(amountToCollect);
+
+        receiptReq.setDescription("Thu tiền đơn hàng " + order.getOrderNumber());
+        if (order.getStore() != null) receiptReq.setStoreId(order.getStore().getId());
+        if (order.getEmployee() != null) receiptReq.setCreatorId(order.getEmployee().getId());
+        cashbookService.createTransaction(receiptReq);
+
+        // 3. Sinh Phiếu Chi tiền thừa
+        if (order.getPaymentMethod() == PaymentMethod.CASH && order.getChangeAmount() != null && order.getChangeAmount().compareTo(BigDecimal.ZERO) > 0) {
+            CashbookTransactionRequest expenseReq = new CashbookTransactionRequest();
+            expenseReq.setType(TransactionType.EXPENSE);
+            expenseReq.setCategory("700 Trả tiền thừa cho khách");
+            expenseReq.setMethod(PaymentMethod.CASH);
+            expenseReq.setReferenceName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ");
+            expenseReq.setAmount(order.getChangeAmount());
+
+            expenseReq.setDescription("Trả tiền thừa đơn " + order.getOrderNumber());
+            if (order.getStore() != null) expenseReq.setStoreId(order.getStore().getId());
+            if (order.getEmployee() != null) expenseReq.setCreatorId(order.getEmployee().getId());
+            cashbookService.createTransaction(expenseReq);
+        }
+
+        // 4. Tích điểm mới và cập nhật chi tiêu thực tế
+        if (order.getCustomer() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
+            try {
+                // Tích điểm qua LoyaltyService
+                loyaltyService.processPointsForOrder(order.getCustomer(), order.getTotalAmount());
+
+                // Cập nhật tổng chi tiêu (totalSpend) vào Entity Customer
+                Customer customer = order.getCustomer();
+                BigDecimal currentTotal = customer.getTotalSpend() != null ? customer.getTotalSpend() : BigDecimal.ZERO;
+                customer.setTotalSpend(currentTotal.add(order.getTotalAmount()));
+                customerRepository.save(customer);
+            } catch (Exception e) {
+                System.err.println("Lỗi tích điểm/chi tiêu: " + e.getMessage());
+            }
+        }
     }
 
     private OrderResponse mapToResponse(Order order) {
@@ -138,10 +235,12 @@ public class OrderService {
                 .subTotal(order.getSubtotal())
                 .discount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
+                .receivedAmount(order.getReceivedAmount() != null ? order.getReceivedAmount() : order.getTotalAmount())
+                .changeAmount(order.getChangeAmount() != null ? order.getChangeAmount() : BigDecimal.ZERO)
                 .customerName(order.getCustomer() != null ? order.getCustomer().getFullName() : "Khách lẻ")
                 .customerPhone(order.getCustomer() != null ? order.getCustomer().getPhone() : "-")
                 .employeeName(order.getEmployee() != null ? order.getEmployee().getFullName() : "-")
-                .storeName(order.getStore() != null ? order.getStore().getName() : "-") // Dòng này sẽ lấy được tên nếu order có store
+                .storeName(order.getStore() != null ? order.getStore().getName() : "-")
                 .createdAt(order.getCreatedAt())
                 .items(order.getOrderDetails() != null ? order.getOrderDetails().stream().map(d -> {
                     String pName = "Sản phẩm";

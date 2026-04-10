@@ -25,4 +25,5 @@ public class SupplierDebtPaymentRequest {
 
     @NotNull(message = "ID Người lập phiếu không được trống")
     private Integer creatorId;
+    private Integer importTicketId;
 }

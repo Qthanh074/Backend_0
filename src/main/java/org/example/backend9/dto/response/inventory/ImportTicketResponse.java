@@ -14,6 +14,8 @@ public class ImportTicketResponse {
     private LocalDateTime importDate;
     private String supplierName;
     private String createdByName;
+    private Integer storeId;
+    private String storeName;
     private BigDecimal totalAmount;
     private BigDecimal paidAmount;
     private BigDecimal debtAmount;

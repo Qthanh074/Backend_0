@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT COUNT(p) FROM Product p")
@@ -13,4 +15,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT COUNT(p) FROM Product p WHERE (SELECT SUM(pv.quantity) FROM ProductVariant pv WHERE pv.product = p) < :threshold")
     Long countLowStock(@Param("threshold") long threshold);
+    List<Product> findBySupplierId(Long supplierId);
 }
