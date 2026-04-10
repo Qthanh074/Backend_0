@@ -37,4 +37,6 @@ public class PromotionRequest {
     private LocalDate endDate;
 
     private Boolean isActive;
+
+    private String applyFor;
 }

@@ -18,20 +18,20 @@ public class CustomerResponse {
     private String address;
     private CustomerTier tier;
     private Integer currentPoints;
-    private BigDecimal totalSpent;
+    private BigDecimal totalSpent; // 🟢 Thống nhất dùng totalSpent
     private Boolean canPlaceOrder;
     private Integer areaId;
     private String areaName;
-    private BigDecimal totalSpending;
     private String rank;
 
     public static CustomerResponse fromEntity(Customer customer) {
+        // Logic tính hạng thẻ tạm thời (Nên để Service xử lý để đồng bộ hơn)
         String calculatedRank = "Đồng";
-        if (customer.getTotalSpending() != null) {
-            double spending = customer.getTotalSpending().doubleValue();
-            if (spending >= 10000000) calculatedRank = "Vàng";
-            else if (spending >= 2000000) calculatedRank = "Bạc";
-        }
+        BigDecimal spendingAmount = customer.getTotalSpent() != null ? customer.getTotalSpent() : BigDecimal.ZERO;
+
+        double spending = spendingAmount.doubleValue();
+        if (spending >= 10000000) calculatedRank = "Vàng";
+        else if (spending >= 2000000) calculatedRank = "Bạc";
 
         return CustomerResponse.builder()
                 .id(customer.getId())
@@ -40,10 +40,13 @@ public class CustomerResponse {
                 .phone(customer.getPhone())
                 .email(customer.getEmail())
                 .address(customer.getAddress())
+                .tier(customer.getTier())
+                .currentPoints(customer.getCurrentPoints())
+                .totalSpent(spendingAmount) // 🟢 Sử dụng trường mới
                 .canPlaceOrder(customer.getCanPlaceOrder())
-                .totalSpending(customer.getTotalSpending())
-                .rank(calculatedRank) // 🟢 Gán hạng vừa tính được vào đây
+                .areaId(customer.getArea() != null ? customer.getArea().getId() : null)
                 .areaName(customer.getArea() != null ? customer.getArea().getName() : null)
+                .rank(calculatedRank)
                 .build();
     }
 }

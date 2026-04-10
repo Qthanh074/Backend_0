@@ -1,10 +1,8 @@
 package org.example.backend9.entity.sales;
 
-
 import org.example.backend9.enums.DiscountType;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -17,7 +15,7 @@ public class Promotion {
     private Integer id;
 
     @Column(unique = true, nullable = false)
-    private String code; // Mã KM (VD: GIAM10)
+    private String code;
 
     @Column(nullable = false)
     private String name;
@@ -25,14 +23,17 @@ public class Promotion {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false, columnDefinition = "VARCHAR(20)") // Thêm cái này
+    @Column(length = 20, nullable = false)
     private DiscountType discountType;
 
-    @Column(nullable = false)
-    private BigDecimal discountValue; // Giá trị (VD: 10 hoặc 50000)
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal discountValue;
 
-    private BigDecimal minPurchase; // Đơn tối thiểu
-    private BigDecimal maxDiscount; // Giảm tối đa (Cho loại %)
+    @Column(precision = 19, scale = 2)
+    private BigDecimal minPurchase = BigDecimal.ZERO; // Mặc định là 0
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal maxDiscount; // Để null đại diện cho "Không giới hạn"
 
     @Column(nullable = false)
     private LocalDate startDate;
@@ -41,4 +42,6 @@ public class Promotion {
     private LocalDate endDate;
 
     private Boolean isActive = true;
+
+    private String applyFor = "ALL"; // Mặc định áp dụng cho tất cả
 }

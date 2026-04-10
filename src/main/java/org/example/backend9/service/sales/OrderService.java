@@ -207,17 +207,11 @@ public class OrderService {
             cashbookService.createTransaction(expenseReq);
         }
 
-        // 4. Tích điểm mới và cập nhật chi tiêu thực tế
+        // 4. Tích điểm mới và cập nhật chi tiêu thực tế thông qua LoyaltyService
         if (order.getCustomer() != null && order.getTotalAmount().compareTo(BigDecimal.ZERO) > 0) {
             try {
-                // Tích điểm qua LoyaltyService
+                // LoyaltyService sẽ xử lý cả cộng điểm và cộng dồn vào trường totalSpent chuẩn
                 loyaltyService.processPointsForOrder(order.getCustomer(), order.getTotalAmount());
-
-                // Cập nhật tổng chi tiêu (totalSpend) vào Entity Customer
-                Customer customer = order.getCustomer();
-                BigDecimal currentTotal = customer.getTotalSpend() != null ? customer.getTotalSpend() : BigDecimal.ZERO;
-                customer.setTotalSpend(currentTotal.add(order.getTotalAmount()));
-                customerRepository.save(customer);
             } catch (Exception e) {
                 System.err.println("Lỗi tích điểm/chi tiêu: " + e.getMessage());
             }

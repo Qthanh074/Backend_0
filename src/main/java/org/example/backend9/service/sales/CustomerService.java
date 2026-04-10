@@ -21,10 +21,10 @@ public class CustomerService {
         this.customerRepository = customerRepository;
     }
 
-
-    private String calculateRank(BigDecimal totalSpending) {
-        if (totalSpending == null) return "Đồng";
-        double spending = totalSpending.doubleValue();
+    // 🟢 Cập nhật: Sử dụng totalSpent để tính hạng thẻ
+    private String calculateRank(BigDecimal totalSpent) {
+        if (totalSpent == null) return "Đồng";
+        double spending = totalSpent.doubleValue();
 
         if (spending >= 10000000) return "Vàng";
         if (spending >= 2000000)  return "Bạc";
@@ -34,14 +34,14 @@ public class CustomerService {
     // Hàm hỗ trợ chuyển đổi Entity sang Response và áp dụng Rank đồng bộ
     private CustomerResponse convertToResponse(Customer customer) {
         CustomerResponse response = CustomerResponse.fromEntity(customer);
-        // Ép hạng thẻ phải theo đúng logic tính toán ở Backend
-        response.setRank(calculateRank(customer.getTotalSpending()));
+        // 🟢 Cập nhật: Ép hạng thẻ dựa trên totalSpent chuẩn
+        response.setRank(calculateRank(customer.getTotalSpent()));
         return response;
     }
 
     public List<CustomerResponse> getAllCustomers() {
         return customerRepository.findAll().stream()
-                .map(this::convertToResponse) // Sử dụng hàm convert đã đồng bộ rank
+                .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
@@ -61,7 +61,10 @@ public class CustomerService {
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
         customer.setCanPlaceOrder(request.getCanPlaceOrder() != null ? request.getCanPlaceOrder() : true);
-        customer.setTotalSpending(BigDecimal.ZERO); // Mặc định chi tiêu = 0 khi mới tạo
+
+        // 🟢 Cập nhật: Sử dụng trường totalSpent mới
+        customer.setTotalSpent(BigDecimal.ZERO);
+        customer.setCurrentPoints(0);
 
         if (request.getAreaId() != null) {
             Area area = new Area();
@@ -109,7 +112,7 @@ public class CustomerService {
         }
 
         return customers.stream()
-                .map(this::convertToResponse) // 🟢 Đồng bộ hạng thẻ tại đây
+                .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 }
